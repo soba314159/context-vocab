@@ -1,0 +1,17 @@
+{
+  "name": "ContextVocab — 文脈で覚える単語帳",
+  "short_name": "ContextVocab",
+  "description": "知らなかった単語からAIが英文を生成して覚える、新感覚の単語帳・多読アプリ。",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FDF6EC",
+  "theme_color": "#FF8A5C",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

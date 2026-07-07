@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>ContextVocab — 文脈で覚える単語帳</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#FF8A5C">
+<meta name="description" content="知らなかった単語からAIが英文を生成して覚える、新感覚の単語帳・多読アプリ。">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ContextVocab">
+<!-- OGP (LINE/SNSでの共有プレビュー) -->
+<meta property="og:title" content="ContextVocab — 文脈で覚える単語帳">
+<meta property="og:description" content="知らなかった単語からAIが英文を生成して覚える、新感覚の学習アプリ。試してみて！">
+<meta property="og:type" content="website">
+<meta property="og:image" content="./icon-512.png">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        cream:  '#FDF6EC',
+        ink:    '#4A3F3C',
+        coral:  '#FF8A5C',
+        coralD: '#F0703F',
+        leaf:   '#7BC96F',
+        leafD:  '#57A84E',
+        sky2:   '#A8D8EA',
+        sand:   '#F5E2C8',
+        lav:    '#C3B1E1',
+      },
+      fontFamily: {
+        round: ['"Zen Maru Gothic"', '"Nunito"', 'sans-serif'],
+        num:   ['"Nunito"', 'sans-serif'],
+      },
+      borderRadius: { '4xl': '2rem' },
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: "Zen Maru Gothic", "Nunito", sans-serif; -webkit-tap-highlight-color: transparent; }
+
+  /* ---------- animations ---------- */
+  @keyframes pop      { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+  @keyframes fadeUp   { from{transform:translateY(14px);opacity:0} to{transform:translateY(0);opacity:1} }
+  @keyframes sheetUp  { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  @keyframes flameBeat{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.18) rotate(-4deg)} }
+  @keyframes floaty   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  @keyframes shake    { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+  @keyframes confetti { 0%{transform:translateY(0) rotate(0);opacity:1} 100%{transform:translateY(90px) rotate(540deg);opacity:0} }
+
+  .anim-pop    { animation: pop .45s cubic-bezier(.34,1.56,.64,1) both; }
+  .anim-fadeup { animation: fadeUp .35s ease both; }
+  .anim-flame  { animation: flameBeat 1.6s ease-in-out infinite; }
+  .anim-shake  { animation: shake .3s ease; }
+  .cloud       { animation: floaty 4s ease-in-out infinite; }
+
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; animation: fadeUp .3s ease both; }
+
+  /* ---------- flashcard 3D flip ---------- */
+  .card-scene { perspective: 1200px; }
+  .card-inner { transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,.2,.2,1); position:relative; }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face  { backface-visibility: hidden; -webkit-backface-visibility: hidden; position:absolute; inset:0; }
+  .card-back  { transform: rotateY(180deg); }
+
+  /* ---------- passage word tokens ---------- */
+  .w-tok { cursor:pointer; border-radius:.4rem; padding:0 .1rem; transition: background .15s, color .15s; }
+  .w-tok:active { background:#FFE3D3; }
+  .w-tok.target { background:#FFF0E5; color:#F0703F; font-weight:800; border-bottom:2px dashed #FF8A5C; }
+  .w-tok.target.done-ok { background:#EAF7E6; color:#57A84E; border-bottom-color:#7BC96F; }
+  .w-tok.target.done-ng { background:#F3EDFB; color:#9A7FC9; border-bottom-color:#C3B1E1; }
+
+  /* ---------- bottom sheet ---------- */
+  #sheet.open  { animation: sheetUp .3s cubic-bezier(.34,1.3,.64,1) both; }
+
+  /* island element reveal */
+  .isl { opacity:0; transform-origin:center bottom; transition: opacity .5s; }
+  .isl.show { opacity:1; animation: pop .6s cubic-bezier(.34,1.56,.64,1) both; }
+
+  .mastery-dot { width:7px; height:7px; border-radius:9999px; }
+
+  .conf { position:absolute; top:0; width:8px; height:8px; border-radius:2px; animation: confetti 1s ease-out forwards; }
+
+  ::-webkit-scrollbar { width:0; height:0; }
+</style>
+</head>
+
+<body class="bg-cream text-ink min-h-screen select-none">
+<div class="max-w-md mx-auto pb-28">
+
+  <!-- ============ HEADER: My Island + Streak ============ -->
+  <header class="px-4 pt-4">
+    <div class="bg-white rounded-4xl shadow-[0_6px_20px_rgba(74,63,60,.08)] overflow-hidden relative">
+      <!-- island svg -->
+      <svg id="island" viewBox="0 0 320 170" class="w-full block">
+        <defs>
+          <linearGradient id="seaG" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#BFE3F2"/><stop offset="100%" stop-color="#8FC9E8"/>
+          </linearGradient>
+          <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#EAF6FB"/><stop offset="100%" stop-color="#D2ECF6"/>
+          </linearGradient>
+        </defs>
+        <!-- sky & sea -->
+        <rect width="320" height="110" fill="url(#skyG)"/>
+        <rect y="110" width="320" height="60" fill="url(#seaG)"/>
+        <circle cx="272" cy="34" r="16" fill="#FFD98E"/>
+        <circle cx="272" cy="34" r="22" fill="#FFD98E" opacity=".25"/>
+        <g class="cloud"><ellipse cx="70" cy="30" rx="22" ry="9" fill="#fff" opacity=".9"/><ellipse cx="88" cy="26" rx="14" ry="7" fill="#fff" opacity=".9"/></g>
+        <g class="cloud" style="animation-delay:-2s"><ellipse cx="190" cy="48" rx="16" ry="7" fill="#fff" opacity=".8"/></g>
+        <!-- island base (always) -->
+        <ellipse cx="160" cy="128" rx="118" ry="26" fill="#F5E2C8"/>
+        <ellipse cx="160" cy="124" rx="106" ry="22" fill="#EED3B0"/>
+        <!-- growth elements: data-th = required mastery points -->
+        <g class="isl" data-th="2"><ellipse cx="150" cy="120" rx="78" ry="16" fill="#9AD68C"/></g>
+        <g class="isl" data-th="4"><ellipse cx="205" cy="126" rx="34" ry="10" fill="#7BC96F"/></g>
+        <g class="isl" data-th="6"><!-- tree 1 -->
+          <rect x="118" y="100" width="5" height="14" rx="2" fill="#9C6B4A"/>
+          <circle cx="120" cy="96" r="11" fill="#57A84E"/><circle cx="113" cy="102" r="7" fill="#6BBF5E"/>
+        </g>
+        <g class="isl" data-th="9"><!-- flowers -->
+          <circle cx="150" cy="122" r="3" fill="#FF9EB5"/><circle cx="162" cy="118" r="3" fill="#FFD98E"/><circle cx="141" cy="115" r="3" fill="#C3B1E1"/>
+        </g>
+        <g class="isl" data-th="12"><!-- tree 2 -->
+          <rect x="200" y="102" width="5" height="14" rx="2" fill="#9C6B4A"/>
+          <circle cx="202" cy="97" r="10" fill="#6BBF5E"/>
+        </g>
+        <g class="isl" data-th="16"><!-- house -->
+          <rect x="158" y="94" width="30" height="22" rx="3" fill="#FFF7EC"/>
+          <path d="M154 96 L173 80 L192 96 Z" fill="#FF8A5C"/>
+          <rect x="169" y="103" width="9" height="13" rx="1.5" fill="#9C6B4A"/>
+        </g>
+        <g class="isl" data-th="21"><!-- tree 3 -->
+          <rect x="90" y="106" width="4" height="11" rx="2" fill="#9C6B4A"/>
+          <circle cx="92" cy="101" r="8" fill="#57A84E"/>
+        </g>
+        <g class="isl" data-th="27"><!-- windmill -->
+          <path d="M236 116 L242 84 L248 116 Z" fill="#FDF0DC"/>
+          <g id="mill" style="transform-origin:242px 84px"><rect x="240.5" y="66" width="3" height="36" rx="1.5" fill="#E8B98A"/><rect x="224" y="82.5" width="36" height="3" rx="1.5" fill="#E8B98A"/></g>
+        </g>
+        <g class="isl" data-th="34"><!-- boat -->
+          <path d="M40 142 q14 10 28 0 l-4 8 q-10 5 -20 0 Z" fill="#B5651D"/>
+          <rect x="53" y="122" width="2.5" height="20" fill="#7a4a22"/><path d="M56 124 L70 136 L56 136 Z" fill="#FFF"/>
+        </g>
+        <g class="isl" data-th="42"><!-- rainbow -->
+          <path d="M100 62 A60 60 0 0 1 220 62" fill="none" stroke="#FF9EB5" stroke-width="4" opacity=".7"/>
+          <path d="M106 62 A54 54 0 0 1 214 62" fill="none" stroke="#FFD98E" stroke-width="4" opacity=".7"/>
+          <path d="M112 62 A48 48 0 0 1 208 62" fill="none" stroke="#A8D8EA" stroke-width="4" opacity=".7"/>
+        </g>
+      </svg>
+
+      <!-- overlay stats -->
+      <div class="absolute top-3 left-4 flex items-center gap-2">
+        <span class="bg-white/85 backdrop-blur rounded-full px-3 py-1 text-xs font-bold shadow-sm">🏝️ マイ・アイランド <span id="islandLv" class="text-coralD"></span></span>
+      </div>
+      <div class="absolute top-3 right-4">
+        <span id="streakBadge" class="bg-white/85 backdrop-blur rounded-full px-3 py-1 text-sm font-extrabold shadow-sm flex items-center gap-1">
+          <span id="flame" class="inline-block">🔥</span><span id="streakNum" class="font-num">0</span>
+        </span>
+      </div>
+      <div class="px-4 py-3 flex justify-between items-center bg-white">
+        <div class="text-xs text-ink/60">育てポイント <b id="pointsNum" class="text-leafD font-num text-sm"></b> pt</div>
+        <div class="text-xs text-ink/60">要復習 <b id="dueNum" class="text-coralD font-num text-sm"></b> 語 / 登録 <b id="totalNum" class="font-num text-sm"></b> 語</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ TAB PANELS ============ -->
+  <main class="px-4 mt-4">
+
+    <!-- ---------- HOME ---------- -->
+    <section id="panel-home" class="tab-panel active">
+      <h2 class="font-bold text-lg mb-2">きょうのミッション</h2>
+      <div class="space-y-3">
+        <button onclick="goTab('read')" class="w-full bg-coral text-white rounded-3xl p-4 text-left shadow-[0_6px_0_#F0703F] active:translate-y-1 active:shadow-none transition-all">
+          <div class="font-extrabold text-base">📖 きみだけの英文をよむ</div>
+          <div class="text-white/85 text-xs mt-1">要復習の単語からAIが英文を生成（プロトタイプ：モック生成）</div>
+        </button>
+        <button onclick="goTab('cards')" class="w-full bg-leaf text-white rounded-3xl p-4 text-left shadow-[0_6px_0_#57A84E] active:translate-y-1 active:shadow-none transition-all">
+          <div class="font-extrabold text-base">🃏 フラッシュカードで復習</div>
+          <div class="text-white/85 text-xs mt-1"><span id="homeDue">0</span> 語が復習待ち</div>
+        </button>
+        <button onclick="goTab('words')" class="w-full bg-white rounded-3xl p-4 text-left shadow-[0_6px_0_#EADFCE] active:translate-y-1 active:shadow-none transition-all">
+          <div class="font-extrabold text-base">➕ 知らなかった単語をとうろく</div>
+          <div class="text-ink/50 text-xs mt-1">出会った単語をすぐメモ。島が育つよ</div>
+        </button>
+      </div>
+      <div id="todayDoneMsg" class="hidden mt-4 bg-sand rounded-3xl p-4 text-center text-sm font-bold anim-pop">
+        ✨ 今日の学習クリア！ストリーク継続中 🔥
+      </div>
+
+      <!-- install to home screen (PWA) -->
+      <button id="installBtn" onclick="doInstall()" class="hidden w-full mt-4 bg-white rounded-3xl p-4 text-left shadow-[0_6px_0_#EADFCE] active:translate-y-1 active:shadow-none transition-all">
+        <div class="font-extrabold text-base">📲 ホーム画面に追加</div>
+        <div class="text-ink/50 text-xs mt-1">アプリのように全画面で使えるよ</div>
+      </button>
+
+      <!-- feedback CTA (MVP) -->
+      <a href="#" onclick="sendFeedback(event)" class="block w-full mt-3 bg-lav/25 rounded-3xl p-4 text-center text-sm font-bold text-[#6b52a3] active:scale-[.98] transition">
+        💌 感想・要望を送る（30秒でMVPに協力）
+      </a>
+      <p class="text-center text-[10px] text-ink/35 mt-3">プロトタイプ版 · データは端末内のみに保存されます</p>
+    </section>
+
+    <!-- ---------- FLASHCARDS ---------- -->
+    <section id="panel-cards" class="tab-panel">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="font-bold text-lg">フラッシュカード</h2>
+        <span id="cardProgress" class="text-xs font-num text-ink/50"></span>
+      </div>
+      <div id="cardArea"></div>
+    </section>
+
+    <!-- ---------- READ (context mode) ---------- -->
+    <section id="panel-read" class="tab-panel">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="font-bold text-lg">コンテキスト・リーディング</h2>
+        <button onclick="generatePassage(true)" class="text-xs bg-white rounded-full px-3 py-1.5 font-bold shadow-sm active:scale-95 transition">🔄 別の文章</button>
+      </div>
+      <div id="readArea"></div>
+    </section>
+
+    <!-- ---------- WORD LIST ---------- -->
+    <section id="panel-words" class="tab-panel">
+      <h2 class="font-bold text-lg mb-2">単語帳</h2>
+      <div class="bg-white rounded-3xl p-4 shadow-sm mb-4">
+        <div class="text-xs font-bold text-ink/50 mb-2">あたらしい単語をとうろく</div>
+        <input id="newEn" type="text" placeholder="英単語（例: serendipity）" class="w-full bg-cream rounded-2xl px-4 py-3 text-sm mb-2 outline-none focus:ring-2 ring-coral/50 transition" autocomplete="off">
+        <input id="newJa" type="text" placeholder="意味（例: 偶然の幸運な発見）" class="w-full bg-cream rounded-2xl px-4 py-3 text-sm mb-3 outline-none focus:ring-2 ring-coral/50 transition" autocomplete="off">
+        <button onclick="addWordFromForm()" class="w-full bg-coral text-white font-extrabold rounded-2xl py-3 shadow-[0_4px_0_#F0703F] active:translate-y-0.5 active:shadow-none transition-all">カードに追加する</button>
+      </div>
+      <div id="wordList" class="space-y-2"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ BOTTOM NAV ============ -->
+<nav class="fixed bottom-0 inset-x-0 z-40">
+  <div class="max-w-md mx-auto bg-white/95 backdrop-blur border-t border-sand rounded-t-3xl shadow-[0_-4px_20px_rgba(74,63,60,.08)] flex justify-around py-2 pb-[max(env(safe-area-inset-bottom),8px)]">
+    <button data-nav="home"  onclick="goTab('home')"  class="nav-btn flex flex-col items-center px-4 py-1 rounded-2xl transition-all"><span class="text-xl">🏝️</span><span class="text-[10px] font-bold">ホーム</span></button>
+    <button data-nav="cards" onclick="goTab('cards')" class="nav-btn flex flex-col items-center px-4 py-1 rounded-2xl transition-all"><span class="text-xl">🃏</span><span class="text-[10px] font-bold">カード</span></button>
+    <button data-nav="read"  onclick="goTab('read')"  class="nav-btn flex flex-col items-center px-4 py-1 rounded-2xl transition-all"><span class="text-xl">📖</span><span class="text-[10px] font-bold">よむ</span></button>
+    <button data-nav="words" onclick="goTab('words')" class="nav-btn flex flex-col items-center px-4 py-1 rounded-2xl transition-all"><span class="text-xl">📚</span><span class="text-[10px] font-bold">単語帳</span></button>
+  </div>
+</nav>
+
+<!-- ============ BOTTOM SHEET (word popup) ============ -->
+<div id="sheetWrap" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-ink/30" onclick="closeSheet()"></div>
+  <div id="sheet" class="absolute bottom-0 inset-x-0 max-w-md mx-auto bg-white rounded-t-4xl p-5 pb-8 shadow-2xl open">
+    <div class="w-10 h-1.5 bg-sand rounded-full mx-auto mb-4"></div>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<!-- toast -->
+<div id="toast" class="fixed top-4 inset-x-0 z-[60] flex justify-center pointer-events-none"></div>
+
+<script>
+/* =====================================================================
+   ContextVocab prototype — state / spaced-repetition / mock AI generator
+===================================================================== */
+/* ---------- MVP share config (edit these two if needed) ---------- */
+// アクセス計測: 無登録カウンター(counterapi.dev)。合計は下記URLで確認できます。
+//   https://api.counterapi.dev/v1/ctxvocab-mvp-8f3k/opens/
+// （末尾スラッシュ付きは閲覧のみ・カウントは増えません）
+const COUNTER_NS = 'ctxvocab-mvp-8f3k';
+// フィードバック送信先。Googleフォーム等のURLに差し替え可能。既定はメール。
+const FEEDBACK_URL = 'mailto:sobaji888@gmail.com?subject=ContextVocab%20MVP%20%E3%81%AE%E6%84%9F%E6%83%B3&body=%E2%97%8F%E4%BD%BF%E3%81%A3%E3%81%A6%E3%81%BF%E3%81%9F%E6%84%9F%E6%83%B3%3A%0A%0A%E2%97%8F%E4%BD%BF%E3%81%84%E3%81%A5%E3%82%89%E3%81%8B%E3%81%A3%E3%81%9F%E7%82%B9%3A%0A%0A%E2%97%8F%E6%AC%B2%E3%81%97%E3%81%84%E6%A9%9F%E8%83%BD%3A%0A';
+
+const LS_KEY = 'ctxvocab_v1';
+const DAY = 864e5;
+/* review interval by mastery level (forgetting-curve style) */
+const INTERVALS = [0, 10*60e3, 1*DAY, 3*DAY, 7*DAY, 14*DAY, 30*DAY];
+const MAX_MASTERY = 5;
+
+/* ---------- seed words (first launch) ---------- */
+const SEED = [
+  ['resilience', '回復力・立ち直る力'],
+  ['endeavor',   '努力・試み'],
+  ['profound',   '深い・深遠な'],
+  ['inevitably', '必然的に・避けられずに'],
+  ['curiosity',  '好奇心'],
+];
+
+/* ---------- mock AI: predefined passages (word set → EN/JA) ---------- */
+const TEMPLATES = [
+  {
+    words: ['endeavor', 'resilience', 'profound'],
+    en: `After years of failure, Mia's small endeavor finally succeeded. Her resilience through every setback taught her a profound lesson: growth rarely feels like growth while it is happening. Looking back, she smiled at how far those quiet struggles had carried her.`,
+    ja: `何年もの失敗の末、ミアのささやかな試み（endeavor）はついに実を結んだ。あらゆる挫折を乗り越えた彼女の回復力（resilience）は、深い（profound）教訓を教えてくれた——成長とは、その最中には成長だと感じられないものだ。振り返って、彼女は静かな苦闘がどれほど遠くまで自分を運んでくれたかに微笑んだ。`
+  },
+  {
+    words: ['curiosity', 'inevitably', 'profound'],
+    en: `Children ask questions that adults have long stopped asking. Their curiosity leads them, inevitably, to ideas that seem simple yet hide something profound. Perhaps learning a language works the same way: keep asking, keep wondering, and the answers slowly begin to find you.`,
+    ja: `子どもたちは、大人がとうに尋ねなくなった問いを口にする。その好奇心（curiosity）は必然的に（inevitably）、単純に見えて深遠な（profound）何かを秘めた考えへと彼らを導く。言語学習も同じかもしれない。問い続け、不思議がり続ければ、答えのほうから少しずつ君を見つけにくる。`
+  },
+  {
+    words: ['endeavor', 'curiosity', 'resilience', 'inevitably'],
+    en: `Every new endeavor begins with curiosity and survives on resilience. Mistakes will inevitably come, but each one quietly points to the next step. The learners who go far are not the ones who never fall; they are the ones who always stand back up.`,
+    ja: `あらゆる新しい試み（endeavor）は好奇心（curiosity）から始まり、回復力（resilience）によって続いていく。間違いは必然的に（inevitably）やってくるが、その一つひとつが静かに次の一歩を指し示す。遠くまで行く学習者とは、決して転ばない人ではなく、必ず立ち上がる人のことだ。`
+  },
+];
+
+/* generic frames used when no template matches (simulated dynamic generation) */
+const GENERIC_FRAMES = [
+  {
+    en: (ws) => `On my desk there is a notebook filled with new words. Today it opened to ${listEn(ws)}. I wrote a tiny story with them, read it aloud twice, and felt each word slowly become mine — the quiet magic of learning.`,
+    ja: (ws) => `机の上には、新しい単語でいっぱいのノートがある。今日開いたページには ${listJa(ws)} が並んでいた。それらで小さな物語を書き、二度声に出して読むと、一語一語がゆっくり自分のものになっていくのを感じた——学びの静かな魔法だ。`
+  },
+  {
+    en: (ws) => `While walking home this evening, I tried to use ${listEn(ws)} in sentences of my own. Some attempts sounded strange, but saying them out loud made the meanings stick, and the town lights felt a little brighter.`,
+    ja: (ws) => `今日の帰り道、${listJa(ws)} を自分の文で使ってみた。おかしな文もあったけれど、声に出すことで意味がしっかり記憶に残り、町の明かりが少しだけ明るく感じられた。`
+  },
+];
+const listEn = (ws) => ws.map(w=>`"${w.en}"`).join(ws.length>2? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1');
+const listJa = (ws) => ws.map(w=>`"${w.en}"（${w.ja}）`).join('、');
+
+/* ---------- mini built-in dictionary for tap-lookup inside passages ---------- */
+const DICT = {
+  after:'〜の後で', years:'年（複数）', failure:'失敗', small:'小さな', finally:'ついに',
+  succeeded:'成功した', through:'〜を通して', every:'すべての', setback:'挫折・つまずき',
+  taught:'教えた（teachの過去形）', lesson:'教訓・レッスン', growth:'成長', rarely:'めったに〜ない',
+  feels:'感じる', like:'〜のように', while:'〜の間に', happening:'起きている', looking:'見ること',
+  back:'後ろへ・戻って', smiled:'微笑んだ', quiet:'静かな', struggles:'苦闘・もがき',
+  carried:'運んだ', children:'子どもたち', questions:'質問', adults:'大人たち', stopped:'やめた',
+  asking:'尋ねること', leads:'導く', ideas:'考え・アイデア', seem:'〜のように見える',
+  simple:'単純な', hide:'隠す', something:'何か', perhaps:'おそらく', learning:'学ぶこと',
+  language:'言語', works:'機能する・うまくいく', same:'同じ', keep:'〜し続ける',
+  wondering:'不思議に思うこと', answers:'答え', slowly:'ゆっくりと', begin:'始める', find:'見つける',
+  begins:'始まる', survives:'生き残る', mistakes:'間違い', quietly:'静かに', points:'指し示す',
+  next:'次の', step:'一歩・ステップ', learners:'学習者', never:'決して〜ない', fall:'転ぶ・落ちる',
+  always:'いつも', stand:'立つ', desk:'机', notebook:'ノート', filled:'満たされた',
+  words:'単語（複数）', today:'今日', opened:'開いた', wrote:'書いた（writeの過去形）',
+  tiny:'とても小さな', story:'物語', read:'読む', aloud:'声に出して', twice:'二度',
+  felt:'感じた（feelの過去形）', become:'〜になる', mine:'私のもの', magic:'魔法',
+  walking:'歩くこと', home:'家・家へ', evening:'夕方', tried:'試した', sentences:'文（複数）',
+  attempts:'試み', sounded:'〜に聞こえた', strange:'奇妙な', saying:'言うこと', meanings:'意味（複数）',
+  stick:'定着する・くっつく', town:'町', lights:'明かり', brighter:'より明るい', ones:'もの・人たち',
+  far:'遠くへ', come:'来る', long:'長い間', their:'彼らの', them:'彼らを', yet:'それでも・まだ',
+  way:'方法・道',
+};
+
+/* =====================================================================
+   state
+===================================================================== */
+let state = load();
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY));
+    if (s && Array.isArray(s.words)) return s;
+  } catch(e) {}
+  return {
+    words: SEED.map(([en, ja], i) => makeWord(en, ja)),
+    streak: 0, lastDone: null,
+  };
+}
+function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function makeWord(en, ja) {
+  return { id: Math.random().toString(36).slice(2), en: en.toLowerCase().trim(), ja: ja.trim(),
+           mastery: 0, next: Date.now(), added: Date.now() };
+}
+const findWord = (en) => state.words.find(w => w.en === en.toLowerCase());
+const dueWords = () => state.words.filter(w => w.next <= Date.now())
+                                  .sort((a,b) => a.mastery - b.mastery || a.next - b.next);
+const points   = () => state.words.reduce((s,w) => s + w.mastery, 0);
+
+/* ---------- spaced repetition ---------- */
+function gradeWord(w, ok) {
+  if (ok) { w.mastery = Math.min(MAX_MASTERY, w.mastery + 1); w.next = Date.now() + INTERVALS[w.mastery]; }
+  else    { w.mastery = Math.max(0, w.mastery - 1);           w.next = Date.now(); } // すぐ再登場
+  save(); renderHeader();
+}
+
+/* ---------- streak ---------- */
+const dayKey = (t) => new Date(t).toISOString().slice(0,10);
+function markStudied() {
+  const today = dayKey(Date.now());
+  if (state.lastDone === today) return false;
+  const yesterday = dayKey(Date.now() - DAY);
+  state.streak = (state.lastDone === yesterday) ? state.streak + 1 : 1;
+  state.lastDone = today;
+  save(); renderHeader();
+  document.getElementById('todayDoneMsg').classList.remove('hidden');
+  burstConfetti();
+  return true;
+}
+
+/* =====================================================================
+   header / island
+===================================================================== */
+function renderHeader() {
+  const p = points();
+  document.getElementById('pointsNum').textContent = p;
+  document.getElementById('dueNum').textContent    = dueWords().length;
+  document.getElementById('totalNum').textContent  = state.words.length;
+  document.getElementById('streakNum').textContent = state.streak;
+  document.getElementById('homeDue').textContent   = dueWords().length;
+  document.getElementById('flame').className = state.streak > 0 ? 'inline-block anim-flame' : 'inline-block grayscale opacity-40';
+
+  let lv = 1 + Math.floor(p / 7);
+  document.getElementById('islandLv').textContent = 'Lv.' + lv;
+  document.querySelectorAll('#island .isl').forEach(el => {
+    el.classList.toggle('show', p >= +el.dataset.th);
+  });
+  if (state.lastDone === dayKey(Date.now()))
+    document.getElementById('todayDoneMsg').classList.remove('hidden');
+}
+
+function burstConfetti() {
+  const host = document.getElementById('toast');
+  const colors = ['#FF8A5C','#7BC96F','#FFD98E','#C3B1E1','#A8D8EA'];
+  for (let i = 0; i < 18; i++) {
+    const c = document.createElement('div');
+    c.className = 'conf';
+    c.style.left = (35 + Math.random()*30) + '%';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDelay = (Math.random()*.3)+'s';
+    host.appendChild(c);
+    setTimeout(() => c.remove(), 1500);
+  }
+}
+
+function toast(msg) {
+  const host = document.getElementById('toast');
+  const t = document.createElement('div');
+  t.className = 'bg-ink text-white text-xs font-bold rounded-full px-4 py-2 shadow-lg anim-pop';
+  t.textContent = msg;
+  host.appendChild(t);
+  setTimeout(() => { t.style.opacity = 0; t.style.transition = 'opacity .4s'; }, 1600);
+  setTimeout(() => t.remove(), 2100);
+}
+
+/* =====================================================================
+   tabs
+===================================================================== */
+function goTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const on = b.dataset.nav === name;
+    b.classList.toggle('bg-sand', on);
+    b.classList.toggle('scale-105', on);
+    b.style.opacity = on ? 1 : .55;
+  });
+  if (name === 'cards') startCards();
+  if (name === 'read')  { if (!currentPassage) generatePassage(); }
+  if (name === 'words') renderWordList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* =====================================================================
+   ① flashcards
+===================================================================== */
+let cardQueue = [], cardIdx = 0, cardDoneCount = 0;
+
+function startCards() {
+  cardQueue = dueWords();
+  cardIdx = 0; cardDoneCount = 0;
+  renderCard();
+}
+function renderCard() {
+  const area = document.getElementById('cardArea');
+  const prog = document.getElementById('cardProgress');
+  if (cardIdx >= cardQueue.length) {
+    prog.textContent = '';
+    area.innerHTML = `
+      <div class="bg-white rounded-4xl p-8 text-center shadow-sm anim-pop">
+        <div class="text-5xl mb-3">${cardQueue.length ? '🎉' : '🌤️'}</div>
+        <div class="font-extrabold text-lg mb-1">${cardQueue.length ? '復習コンプリート！' : 'いま復習待ちの単語はないよ'}</div>
+        <div class="text-xs text-ink/50 mb-5">${cardQueue.length ? '島にポイントが追加されました' : '「よむ」で英文を読むか、新しい単語を登録しよう'}</div>
+        <button onclick="goTab('read')" class="bg-coral text-white font-extrabold rounded-2xl px-6 py-3 shadow-[0_4px_0_#F0703F] active:translate-y-0.5 active:shadow-none transition-all">📖 英文をよむ</button>
+      </div>`;
+    if (cardDoneCount > 0) markStudied();
+    return;
+  }
+  const w = cardQueue[cardIdx];
+  prog.textContent = `${cardIdx + 1} / ${cardQueue.length}`;
+  area.innerHTML = `
+    <div class="card-scene anim-fadeup">
+      <div id="cardInner" class="card-inner h-56" onclick="this.classList.toggle('flipped')">
+        <div class="card-face bg-white rounded-4xl shadow-[0_8px_24px_rgba(74,63,60,.1)] flex flex-col items-center justify-center p-6">
+          <div class="text-3xl font-extrabold font-num tracking-wide">${esc(w.en)}</div>
+          <div class="mt-3 flex gap-1">${masteryDots(w.mastery)}</div>
+          <div class="text-[11px] text-ink/40 mt-4">タップで意味を表示</div>
+        </div>
+        <div class="card-face card-back bg-sand rounded-4xl shadow-[0_8px_24px_rgba(74,63,60,.1)] flex flex-col items-center justify-center p-6">
+          <div class="text-xl font-bold text-center leading-relaxed">${esc(w.ja)}</div>
+          <div class="text-[11px] text-ink/40 mt-4">${esc(w.en)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mt-4">
+      <button onclick="answerCard(false)" class="bg-lav text-white font-extrabold rounded-2xl py-4 shadow-[0_4px_0_#9A7FC9] active:translate-y-0.5 active:shadow-none transition-all">😵 まだ</button>
+      <button onclick="answerCard(true)"  class="bg-leaf text-white font-extrabold rounded-2xl py-4 shadow-[0_4px_0_#57A84E] active:translate-y-0.5 active:shadow-none transition-all">😎 覚えてた</button>
+    </div>`;
+}
+function answerCard(ok) {
+  const w = cardQueue[cardIdx];
+  gradeWord(w, ok);
+  cardDoneCount++;
+  if (!ok) toast(`「${w.en}」はすぐ再登場します`);
+  cardIdx++;
+  renderCard();
+}
+const masteryDots = (m) =>
+  Array.from({length: MAX_MASTERY}, (_,i) =>
+    `<span class="mastery-dot ${i < m ? 'bg-leaf' : 'bg-sand'}"></span>`).join('');
+
+/* =====================================================================
+   ② context reading (mock AI generation)
+===================================================================== */
+let currentPassage = null;   // { en, ja, targets:[word], graded:{en:bool} , source }
+let genSeed = 0;
+
+function pickTargets() {
+  let pool = dueWords();
+  if (pool.length < 3) {
+    // 復習待ちが少ないときは熟練度の低い単語で補完（プロトタイプ挙動）
+    const extra = state.words.filter(w => !pool.includes(w)).sort((a,b) => a.mastery - b.mastery);
+    pool = pool.concat(extra);
+  }
+  return pool.slice(0, 5);
+}
+
+function generatePassage(shuffle) {
+  if (shuffle) genSeed++;
+  const pool = pickTargets();
+  if (pool.length === 0) {
+    document.getElementById('readArea').innerHTML = `
+      <div class="bg-white rounded-4xl p-8 text-center shadow-sm">
+        <div class="text-4xl mb-2">📭</div>
+        <div class="font-bold">単語がまだ登録されていません</div>
+        <div class="text-xs text-ink/50 mt-1">「単語帳」タブから追加してね</div>
+      </div>`;
+    currentPassage = null;
+    return;
+  }
+  const poolSet = new Set(pool.map(w => w.en));
+
+  // 完全一致するテンプレートを探す（AI生成のシミュレーション）
+  const candidates = TEMPLATES
+    .map(t => ({ t, hit: t.words.filter(w => poolSet.has(w)).length }))
+    .filter(x => x.hit === x.t.words.length)
+    .sort((a,b) => b.hit - a.hit);
+
+  let en, ja, targets;
+  if (candidates.length) {
+    const chosen = candidates[genSeed % candidates.length].t;
+    en = chosen.en; ja = chosen.ja;
+    targets = chosen.words.map(findWord).filter(Boolean);
+  } else {
+    // 汎用フレームで動的に組み立て（シミュレーション）
+    targets = pool.slice(0, Math.min(4, pool.length));
+    const frame = GENERIC_FRAMES[genSeed % GENERIC_FRAMES.length];
+    en = frame.en(targets); ja = frame.ja(targets);
+  }
+  currentPassage = { en, ja, targets, graded: {}, showJa: false };
+  renderRead();
+}
+
+function renderRead() {
+  const p = currentPassage;
+  const area = document.getElementById('readArea');
+  const targetSet = new Set(p.targets.map(w => w.en));
+
+  // tokenize: wrap each word in a clickable span
+  const html = p.en.split(/(\s+)/).map(tok => {
+    if (/^\s+$/.test(tok)) return tok;
+    const clean = tok.replace(/^["'(“]+|["')!?.,:;”—]+$/g, '');
+    const key = clean.toLowerCase();
+    if (!clean) return esc(tok);
+    const isTarget = targetSet.has(key);
+    const g = p.graded[key];
+    const cls = 'w-tok' + (isTarget ? ' target' + (g === true ? ' done-ok' : g === false ? ' done-ng' : '') : '');
+    return tok.replace(clean, `<span class="${cls}" data-w="${esc(key)}" onclick="tapWord(event,'${esc(key)}')">${esc(clean)}</span>`);
+  }).join('');
+
+  const allGraded = p.targets.every(w => p.graded[w.en] !== undefined);
+
+  area.innerHTML = `
+    <div class="bg-white rounded-4xl p-5 shadow-sm anim-fadeup">
+      <div class="flex items-center gap-2 mb-3 flex-wrap">
+        <span class="text-[10px] font-bold bg-coral/10 text-coralD rounded-full px-2.5 py-1">✨ AI生成（モック）</span>
+        <span class="text-[10px] text-ink/40">ターゲット ${p.targets.length} 語入り</span>
+      </div>
+      <p class="leading-8 text-[15px] font-num">${html}</p>
+
+      <button onclick="toggleJa()" class="mt-4 w-full bg-sky2/40 text-ink font-bold rounded-2xl py-2.5 text-sm active:scale-[.98] transition">
+        ${p.showJa ? '🙈 日本語訳をかくす' : '🇯🇵 日本語訳'}
+      </button>
+      <div class="${p.showJa ? '' : 'hidden'} mt-3 bg-cream rounded-2xl p-4 text-[13px] leading-6 anim-fadeup">${esc(p.ja)}</div>
+    </div>
+
+    <div class="bg-white rounded-4xl p-5 shadow-sm mt-3">
+      <div class="text-xs font-bold text-ink/50 mb-3">ターゲット単語 — 読めた？（オレンジの単語をタップすると意味を確認できます）</div>
+      <div class="space-y-2">
+        ${p.targets.map(w => {
+          const g = p.graded[w.en];
+          return `
+          <div class="flex items-center gap-2 bg-cream rounded-2xl px-3 py-2 ${g!==undefined ? 'opacity-80' : ''}">
+            <div class="flex-1 min-w-0">
+              <span class="font-extrabold font-num text-sm">${esc(w.en)}</span>
+              <span class="text-[11px] text-ink/45 ml-1">${g === false ? esc(w.ja) : g === true ? '✓' : ''}</span>
+            </div>
+            <div class="flex gap-1.5 shrink-0">
+              <button onclick="gradeTarget('${esc(w.en)}', true)"  class="text-xs font-bold rounded-xl px-3 py-1.5 transition-all ${g===true  ? 'bg-leaf text-white' : 'bg-white shadow-sm active:scale-95'}">読めた</button>
+              <button onclick="gradeTarget('${esc(w.en)}', false)" class="text-xs font-bold rounded-xl px-3 py-1.5 transition-all ${g===false ? 'bg-lav text-white'  : 'bg-white shadow-sm active:scale-95'}">🤔 確認</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <button onclick="finishReading()" ${allGraded ? '' : 'disabled'}
+        class="mt-4 w-full font-extrabold rounded-2xl py-3.5 transition-all
+        ${allGraded ? 'bg-coral text-white shadow-[0_4px_0_#F0703F] active:translate-y-0.5 active:shadow-none' : 'bg-sand text-ink/30'}">
+        ${allGraded ? '📚 読了！ポイントゲット' : 'すべての単語をチェックしよう'}
+      </button>
+    </div>`;
+}
+
+function toggleJa() { currentPassage.showJa = !currentPassage.showJa; renderRead(); }
+
+function gradeTarget(en, ok) {
+  const p = currentPassage;
+  if (p.graded[en] !== undefined) { // 変更可
+    // 前回の採点を取り消してから付け直す（プロトタイプでは熟練度は最後の選択のみ反映）
+  }
+  p.graded[en] = ok;
+  renderRead();
+}
+
+function finishReading() {
+  const p = currentPassage;
+  let up = 0, down = 0;
+  p.targets.forEach(w => {
+    const word = findWord(w.en);
+    if (!word) return;
+    gradeWord(word, p.graded[w.en] === true);
+    p.graded[w.en] === true ? up++ : down++;
+  });
+  markStudied();
+  toast(`熟練度UP ${up} 語 / 要復習 ${down} 語`);
+  currentPassage = null;
+  generatePassage(true);
+}
+
+/* ---------- tap a word inside the passage ---------- */
+function tapWord(ev, key) {
+  ev.stopPropagation();
+  const p = currentPassage;
+  const registered = findWord(key);
+  const isTarget = p && p.targets.some(w => w.en === key);
+
+  // ターゲット単語の意味をタップで確認 → 忘却曲線的に「まだ」扱い
+  let autoNote = '';
+  if (isTarget && p.graded[key] === undefined) {
+    p.graded[key] = false;
+    autoNote = `<div class="text-[11px] bg-lav/20 text-[#7d5fb0] rounded-xl px-3 py-2 mt-3">🤔 意味を確認したので「要復習」にマークしました（熟練度は読了時に反映）</div>`;
+    renderRead();
+  }
+
+  const dictJa = registered ? registered.ja : DICT[key];
+  let body;
+  if (dictJa) {
+    body = `
+      <div class="text-2xl font-extrabold font-num mb-1">${esc(key)}</div>
+      <div class="text-base font-bold text-ink/80 mb-1">${esc(dictJa)}</div>
+      ${registered
+        ? `<div class="flex gap-1 items-center mt-2">${masteryDots(registered.mastery)}<span class="text-[10px] text-ink/40 ml-1">熟練度</span></div>
+           <div class="text-[11px] text-ink/40 mt-2">✅ カード登録済み</div>`
+        : `<button onclick="registerFromSheet('${esc(key)}', '${esc(dictJa)}')"
+             class="mt-4 w-full bg-coral text-white font-extrabold rounded-2xl py-3 shadow-[0_4px_0_#F0703F] active:translate-y-0.5 active:shadow-none transition-all">
+             ➕ この単語をカードに追加</button>`}
+      ${autoNote}`;
+  } else {
+    body = `
+      <div class="text-2xl font-extrabold font-num mb-1">${esc(key)}</div>
+      <div class="text-xs text-ink/50 mb-3">辞書にない単語です。意味を入力して登録できます（本番ではAI/辞書APIが自動入力）。</div>
+      <input id="sheetJa" type="text" placeholder="意味を入力（例: 〜という意味）" class="w-full bg-cream rounded-2xl px-4 py-3 text-sm mb-3 outline-none focus:ring-2 ring-coral/50">
+      <button onclick="registerFromSheet('${esc(key)}', null)"
+        class="w-full bg-coral text-white font-extrabold rounded-2xl py-3 shadow-[0_4px_0_#F0703F] active:translate-y-0.5 active:shadow-none transition-all">➕ カードに追加</button>
+      ${autoNote}`;
+  }
+  openSheet(body);
+}
+
+function registerFromSheet(en, ja) {
+  if (ja === null) {
+    ja = (document.getElementById('sheetJa')?.value || '').trim();
+    if (!ja) { document.getElementById('sheetJa').classList.add('anim-shake'); setTimeout(()=>document.getElementById('sheetJa')?.classList.remove('anim-shake'),350); return; }
+  }
+  if (!findWord(en)) {
+    state.words.push(makeWord(en, ja));
+    save(); renderHeader();
+    toast(`「${en}」をカードに追加しました 🌱`);
+  }
+  closeSheet();
+  if (currentPassage) renderRead();
+}
+
+function openSheet(html) {
+  document.getElementById('sheetBody').innerHTML = html;
+  document.getElementById('sheetWrap').classList.remove('hidden');
+  const s = document.getElementById('sheet');
+  s.classList.remove('open'); void s.offsetWidth; s.classList.add('open');
+}
+function closeSheet() { document.getElementById('sheetWrap').classList.add('hidden'); }
+
+/* =====================================================================
+   ④ word list
+===================================================================== */
+function addWordFromForm() {
+  const enEl = document.getElementById('newEn'), jaEl = document.getElementById('newJa');
+  const en = enEl.value.trim(), ja = jaEl.value.trim();
+  if (!en || !ja) {
+    (en ? jaEl : enEl).classList.add('anim-shake');
+    setTimeout(() => (en ? jaEl : enEl).classList.remove('anim-shake'), 350);
+    return;
+  }
+  if (findWord(en)) { toast('すでに登録されています'); return; }
+  state.words.push(makeWord(en, ja));
+  save(); renderHeader(); renderWordList();
+  enEl.value = ''; jaEl.value = '';
+  toast(`「${en}」を追加！島が育つよ 🌱`);
+}
+
+function renderWordList() {
+  const host = document.getElementById('wordList');
+  const sorted = [...state.words].sort((a,b) => a.mastery - b.mastery || b.added - a.added);
+  host.innerHTML = sorted.map(w => {
+    const due = w.next <= Date.now();
+    return `
+    <div class="bg-white rounded-3xl px-4 py-3 shadow-sm flex items-center gap-3 anim-fadeup">
+      <div class="flex-1 min-w-0">
+        <div class="font-extrabold font-num text-sm">${esc(w.en)}
+          ${due ? '<span class="text-[9px] bg-coral/10 text-coralD font-bold rounded-full px-1.5 py-0.5 ml-1 align-middle">要復習</span>' : ''}
+        </div>
+        <div class="text-[11px] text-ink/50 truncate">${esc(w.ja)}</div>
+      </div>
+      <div class="flex gap-1 shrink-0">${masteryDots(w.mastery)}</div>
+      <button onclick="deleteWord('${w.id}')" class="text-ink/25 text-sm px-1 active:scale-90 transition">✕</button>
+    </div>`;
+  }).join('') || '<div class="text-center text-xs text-ink/40 py-8">単語がありません</div>';
+}
+function deleteWord(id) {
+  state.words = state.words.filter(w => w.id !== id);
+  save(); renderHeader(); renderWordList();
+}
+
+/* ---------- util ---------- */
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* =====================================================================
+   MVP: feedback / analytics / PWA install
+===================================================================== */
+function sendFeedback(ev) {
+  if (ev) ev.preventDefault();
+  window.location.href = FEEDBACK_URL;
+}
+
+/* --- lightweight open counter (privacy-friendly, no cookies/PII) --- */
+function pingOpen() {
+  try {
+    // 1日1回だけカウント（同一端末の重複を抑制）
+    const today = dayKey(Date.now());
+    if (localStorage.getItem('ctxvocab_pinged') === today) return;
+    localStorage.setItem('ctxvocab_pinged', today);
+    fetch(`https://api.counterapi.dev/v1/${COUNTER_NS}/opens/up`, { keepalive: true }).catch(() => {});
+  } catch (e) {}
+}
+
+/* --- owner stats view: open index.html?stats --- */
+function maybeShowStats() {
+  if (!/[?&]stats/.test(location.search)) return;
+  fetch(`https://api.counterapi.dev/v1/${COUNTER_NS}/opens/`)
+    .then(r => r.json())
+    .then(d => {
+      const box = document.createElement('div');
+      box.className = 'fixed top-3 inset-x-0 z-[70] flex justify-center';
+      box.innerHTML = `<div class="bg-ink text-white rounded-2xl px-5 py-3 shadow-xl text-center anim-pop">
+        <div class="text-[11px] opacity-70">これまでの起動回数（1日1端末カウント）</div>
+        <div class="text-2xl font-extrabold font-num">${d.count ?? '—'} <span class="text-sm">回</span></div>
+      </div>`;
+      document.body.appendChild(box);
+    }).catch(() => {});
+}
+
+/* --- PWA install prompt --- */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn')?.classList.remove('hidden');
+});
+function doInstall() {
+  if (!deferredPrompt) { toast('ブラウザのメニューから「ホーム画面に追加」を選んでね'); return; }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.finally(() => {
+    deferredPrompt = null;
+    document.getElementById('installBtn')?.classList.add('hidden');
+  });
+}
+window.addEventListener('appinstalled', () => document.getElementById('installBtn')?.classList.add('hidden'));
+
+/* --- register service worker (offline support) --- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+
+/* =====================================================================
+   boot
+===================================================================== */
+renderHeader();
+goTab('home');
+pingOpen();
+maybeShowStats();
+</script>
+</body>
+</html>
