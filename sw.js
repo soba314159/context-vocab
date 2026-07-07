@@ -1,5 +1,7 @@
-/* ContextVocab service worker — offline-first cache for the MVP prototype */
-const CACHE = 'ctxvocab-v2';
+/* ContextVocab service worker — MVP
+   HTML/ナビゲーションは network-first（オンライン時は常に最新を配信）、
+   アイコン等の静的アセットは cache-first。オフラインでも起動可能。 */
+const CACHE = 'ctxvocab-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -27,11 +29,27 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  // Only handle same-origin GETs. Cross-origin (Tailwind CDN, fonts, the
-  // analytics counter) passes straight through to the network untouched.
+  // Cross-origin (Tailwind CDN, fonts, analytics counter) passes straight through.
   if (url.origin !== self.location.origin) return;
 
-  // App shell: cache-first, fall back to network (and cache the result).
+  const isDoc = req.mode === 'navigate' || req.destination === 'document' ||
+                url.pathname.endsWith('/') || url.pathname.endsWith('.html');
+
+  if (isDoc) {
+    // network-first: 最新HTMLを優先。失敗時のみキャッシュ（＝オフライン）
+    e.respondWith(
+      fetch(req).then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      }).catch(() => caches.match(req).then((hit) => hit || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // static assets: cache-first
   e.respondWith(
     caches.match(req).then((hit) => hit || fetch(req).then((res) => {
       if (res && res.ok) {
@@ -39,6 +57,6 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
       }
       return res;
-    }).catch(() => caches.match('./index.html')))
+    }))
   );
 });

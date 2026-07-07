@@ -1049,9 +1049,26 @@ function doInstall() {
 }
 window.addEventListener('appinstalled', () => document.getElementById('installBtn')?.classList.add('hidden'));
 
-/* --- register service worker (offline support) --- */
+/* --- register service worker (offline support + auto-update) --- */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  // 新しいSWが制御を引き継いだら、一度だけ自動リロードして最新表示に切替
+  let swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swReloaded) return;
+    swReloaded = true;
+    window.location.reload();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (nw) nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) nw.postMessage?.('skip');
+        });
+      });
+      reg.update?.();
+    }).catch(() => {});
+  });
 }
 
 /* =====================================================================
