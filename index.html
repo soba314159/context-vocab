@@ -225,9 +225,27 @@ tailwind.config = {
     <!-- ---------- READ (context mode) ---------- -->
     <section id="panel-read" class="tab-panel">
       <div class="flex items-center justify-between mb-2">
-        <h2 class="font-bold text-lg">コンテキスト・リーディング</h2>
-        <button onclick="generatePassage(true)" class="text-xs bg-white rounded-full px-3 py-1.5 font-bold shadow-sm active:scale-95 transition">🔄 別の文章</button>
+        <h2 class="font-bold text-lg">よむ</h2>
+        <button onclick="shuffleRead()" class="text-xs bg-white rounded-full px-3 py-1.5 font-bold shadow-sm active:scale-95 transition">🔄 別の文章</button>
       </div>
+
+      <!-- mode toggle -->
+      <div class="bg-white rounded-full p-1 flex mb-3 shadow-sm">
+        <button id="modeMine"  onclick="setReadMode('mine')"  class="flex-1 rounded-full py-2 text-xs font-extrabold transition-all">🎯 マイ単語</button>
+        <button id="modeEiken" onclick="setReadMode('eiken')" class="flex-1 rounded-full py-2 text-xs font-extrabold transition-all">🎓 英検長文</button>
+      </div>
+
+      <!-- eiken level chips (shown only in eiken mode) -->
+      <div id="eikenLevels" class="hidden mb-3">
+        <div class="flex gap-2 overflow-x-auto pb-1">
+          <button data-lv="p2" onclick="selectEikenLevel('p2')" class="eiken-chip whitespace-nowrap text-xs font-extrabold rounded-full px-4 py-2 transition-all">準2級</button>
+          <button data-lv="g2" onclick="selectEikenLevel('g2')" class="eiken-chip whitespace-nowrap text-xs font-extrabold rounded-full px-4 py-2 transition-all">2級</button>
+          <button data-lv="p1" onclick="selectEikenLevel('p1')" class="eiken-chip whitespace-nowrap text-xs font-extrabold rounded-full px-4 py-2 transition-all">準1級</button>
+          <button data-lv="g1" onclick="selectEikenLevel('g1')" class="eiken-chip whitespace-nowrap text-xs font-extrabold rounded-full px-4 py-2 transition-all">1級</button>
+        </div>
+        <p class="text-[10px] text-ink/40 mt-1.5 px-1">長文を読み、知らない単語をタップ → 意味を確認してカードに登録できます</p>
+      </div>
+
       <div id="readArea"></div>
     </section>
 
@@ -353,6 +371,77 @@ const DICT = {
 };
 
 /* =====================================================================
+   英検リーディング（準2級〜1級） — 知らない単語を長文から探すモード
+   各長文: en(本文) / ja(全訳) / gloss(語注: 単語→意味) / q(内容一致問題)
+===================================================================== */
+const EIKEN = {
+  p2: { label: '準2級', cefr: 'CEFR A2', color: '#7BC96F', passages: [
+    {
+      title: 'My First Part-Time Job',
+      en: `Last summer, I started my first part-time job at a small bakery near my house. At first, I was very nervous because I had never worked before. My manager, Ms. Tanaka, was kind and patient. She taught me how to use the cash register and how to talk to customers politely. In the beginning, I made many mistakes. Once, I gave a customer the wrong change, and I felt embarrassed. However, Ms. Tanaka told me that everyone makes mistakes when they are learning. After a few weeks, I became more confident. I could greet customers with a smile and remember the names of the different kinds of bread. The job was sometimes tiring, but it was also fun. I learned that working hard and being honest are important. Now I look forward to going to work every weekend.`,
+      ja: `去年の夏、私は家の近くの小さなパン屋で初めてのアルバイトを始めた。最初は、働いた経験が一度もなかったのでとても緊張していた。店長の田中さんは親切で忍耐強い人だった。彼女はレジの使い方や、お客さんに丁寧に話す方法を教えてくれた。最初のうちは、たくさん失敗した。あるとき、お客さんに間違ったお釣りを渡してしまい、恥ずかしい思いをした。けれども田中さんは、人は学んでいるときには誰でも失敗するものだと言ってくれた。数週間後、私はもっと自信を持てるようになった。笑顔でお客さんに挨拶し、いろいろな種類のパンの名前を覚えられるようになった。その仕事はときに疲れるものだったが、同時に楽しくもあった。私は、一生懸命働くことと正直でいることが大切だと学んだ。今では毎週末、仕事に行くのが楽しみだ。`,
+      gloss: { nervous:'緊張して', patient:'忍耐強い', register:'レジ・登録', customers:'客', politely:'丁寧に', mistakes:'間違い', change:'お釣り・変化', embarrassed:'恥ずかしい', confident:'自信のある', greet:'挨拶する', tiring:'疲れさせる', honest:'正直な' },
+      q: { question: 'Why did the writer feel embarrassed?', choices: ['They were late for work.', 'They gave a customer the wrong change.', 'They forgot the manager’s name.'], answer: 1, explain: '「間違ったお釣りを渡して恥ずかしかった」と本文にあります。' }
+    },
+    {
+      title: 'A Trip to the Countryside',
+      en: `During the spring holidays, my family visited my grandparents in the countryside. They live in a small village surrounded by mountains and rice fields. The air there was fresh and clean, and the sky was full of stars at night. My grandfather took me fishing in the river, and we caught three small fish. My grandmother taught me how to make traditional rice cakes. At first, I thought village life might be boring, but I was wrong. Every day was full of new experiences. I helped my grandparents plant vegetables in their garden and fed the chickens. I also met some local children and played games with them. When it was time to go home, I felt a little sad. I promised my grandparents that I would visit them again during the summer vacation.`,
+      ja: `春休みの間、私の家族は田舎に住む祖父母を訪ねた。祖父母は山々と田んぼに囲まれた小さな村に住んでいる。そこの空気は新鮮できれいで、夜には空いっぱいに星が広がっていた。祖父は私を川へ釣りに連れて行ってくれて、小さな魚を三匹釣った。祖母は伝統的な餅の作り方を教えてくれた。最初、私は村の生活は退屈かもしれないと思っていたが、間違いだった。毎日が新しい経験でいっぱいだった。私は祖父母が庭で野菜を植えるのを手伝い、ニワトリに餌をやった。地元の子どもたちにも出会い、一緒に遊んだ。家に帰る時間になると、私は少し悲しくなった。私は祖父母に、夏休みにまた訪ねると約束した。`,
+      gloss: { countryside:'田舎', surrounded:'囲まれた', fields:'畑・田んぼ', fresh:'新鮮な', traditional:'伝統的な', boring:'退屈な', experiences:'経験', plant:'植える', local:'地元の', promised:'約束した', vacation:'休暇' },
+      q: { question: 'What did the writer’s grandmother teach?', choices: ['How to catch fish.', 'How to make traditional rice cakes.', 'How to feed the chickens.'], answer: 1, explain: '祖母は「伝統的な餅の作り方」を教えてくれたとあります。' }
+    },
+  ]},
+  g2: { label: '2級', cefr: 'CEFR B1', color: '#57A84E', passages: [
+    {
+      title: 'The Benefits of Reading',
+      en: `In today's world, many people spend hours looking at their smartphones instead of reading books. However, reading has many benefits that should not be ignored. First, reading improves our vocabulary and language skills. When we read, we come across new words and expressions that we can later use in our own writing and conversations. Second, reading helps us develop our imagination. Unlike watching videos, reading forces our brains to create images and picture scenes in our minds. This mental activity keeps our brains active and healthy. In addition, reading can reduce stress. Studies have shown that people who read regularly feel calmer than those who do not. Finally, reading increases our knowledge about the world. Through books, we can learn about different cultures, historical events, and scientific discoveries without leaving our homes. For these reasons, it is important to make reading a regular habit. Even reading for just twenty minutes a day can make a big difference over time.`,
+      ja: `今日の世界では、多くの人が本を読む代わりに何時間もスマートフォンを見て過ごしている。しかし、読書には無視すべきでない多くの利点がある。第一に、読書は語彙と言語能力を向上させる。読むとき、私たちは新しい単語や表現に出会い、後で自分の文章や会話で使うことができる。第二に、読書は想像力を育てる助けになる。動画を見るのとは違い、読書は脳にイメージを作り出し、場面を思い描くことを促す。この頭の働きは脳を活発で健康に保つ。さらに、読書はストレスを減らすこともできる。定期的に読書をする人は、そうでない人より穏やかに感じるという研究結果がある。最後に、読書は世界についての知識を増やす。本を通じて、私たちは家を離れることなく、さまざまな文化や歴史的な出来事、科学的発見について学べる。これらの理由から、読書を日々の習慣にすることが大切だ。一日たった二十分の読書でも、時間がたてば大きな違いを生む。`,
+      gloss: { benefits:'利点', ignored:'無視される', improves:'向上させる', vocabulary:'語彙', expressions:'表現', develop:'発達させる', imagination:'想像力', reduce:'減らす', regularly:'定期的に', knowledge:'知識', discoveries:'発見', habit:'習慣' },
+      q: { question: 'According to the passage, what is one benefit of reading?', choices: ['It makes smartphones cheaper.', 'It reduces stress and improves vocabulary.', 'It replaces the need for sleep.'], answer: 1, explain: '本文は語彙向上・想像力・ストレス軽減・知識増加を利点として挙げています。' }
+    },
+    {
+      title: 'The Problem of Food Waste',
+      en: `Food waste is a serious problem in many countries around the world. Every year, a huge amount of food is thrown away, even though millions of people do not have enough to eat. There are several reasons why so much food is wasted. In supermarkets, fruits and vegetables that do not look perfect are often thrown away, even if they are still fresh and safe to eat. At home, people frequently buy more food than they need, and some of it goes bad before it can be eaten. This waste is not only a waste of money but also harmful to the environment. When food is thrown away, all the water and energy used to produce it are wasted too. Moreover, rotting food produces gases that contribute to climate change. Fortunately, there are ways to solve this problem. Some supermarkets now sell imperfect vegetables at lower prices, and certain restaurants donate their extra food to people in need. As individuals, we can also help by planning our meals carefully and only buying what we will actually use.`,
+      ja: `食品ロスは、世界中の多くの国で深刻な問題だ。毎年、何百万もの人々が十分に食べられないでいるにもかかわらず、膨大な量の食べ物が捨てられている。これほど多くの食べ物が無駄にされるのにはいくつかの理由がある。スーパーマーケットでは、見た目が完璧でない果物や野菜が、まだ新鮮で安全に食べられるのに、しばしば捨てられてしまう。家庭では、人々は必要以上に食べ物を買い、その一部は食べる前に傷んでしまう。この無駄はお金の無駄であるだけでなく、環境にも有害だ。食べ物が捨てられるとき、それを生産するのに使われた水やエネルギーもすべて無駄になる。さらに、腐った食べ物は気候変動の一因となる気体を発生させる。幸い、この問題を解決する方法はある。今では、見た目の悪い野菜を安く売るスーパーマーケットもあり、余った食べ物を困っている人に寄付するレストランもある。個人としても、私たちは食事を注意深く計画し、実際に使う分だけを買うことで手助けできる。`,
+      gloss: { waste:'無駄・廃棄', serious:'深刻な', huge:'巨大な', frequently:'頻繁に', harmful:'有害な', environment:'環境', produce:'生産する', rotting:'腐っている', contribute:'一因となる', imperfect:'不完全な', donate:'寄付する', individuals:'個人' },
+      q: { question: 'What do some supermarkets now do with imperfect vegetables?', choices: ['Throw them away immediately.', 'Sell them at lower prices.', 'Send them back to farmers.'], answer: 1, explain: '「見た目の悪い野菜を安く売るスーパーもある」と述べられています。' }
+    },
+  ]},
+  p1: { label: '準1級', cefr: 'CEFR B2', color: '#FF8A5C', passages: [
+    {
+      title: 'The Rise of Remote Work',
+      en: `Over the past decade, remote work has transformed from a rare privilege into a widespread practice adopted by companies across the globe. This shift, accelerated by technological advances and unforeseen global events, has fundamentally altered the way people think about the workplace. Advocates argue that remote work offers numerous advantages. Employees can save considerable time and money by eliminating their daily commute, and they often report a better work-life balance. Companies, in turn, can reduce expenses related to office space and gain access to a wider pool of talent, unrestricted by geographical boundaries. However, the transition is not without its drawbacks. Many workers struggle with feelings of isolation, missing the spontaneous interactions that a physical office provides. Communication can become more challenging, as subtle cues conveyed through body language are lost in video calls. Furthermore, the boundary between professional and personal life can blur, leading some employees to experience burnout. The long-term consequences remain uncertain. Some experts predict that a hybrid model will become the norm, while others worry that the decline of face-to-face collaboration could weaken company culture. What is clear is that the traditional office job is no longer the only option.`,
+      ja: `この十年ほどの間に、リモートワークはまれな特権から、世界中の企業に採用される広く一般的な働き方へと様変わりした。技術の進歩や予期せぬ世界的な出来事によって加速したこの変化は、人々が職場について考える方法を根本的に変えた。支持者たちは、リモートワークには数多くの利点があると主張する。従業員は毎日の通勤をなくすことでかなりの時間とお金を節約でき、仕事と生活のバランスが良くなったと報告することも多い。企業の側も、オフィス空間にかかる費用を減らし、地理的な境界に縛られないより広い人材の層にアクセスできる。しかし、この移行に欠点がないわけではない。多くの働き手は孤立感に悩み、実際のオフィスがもたらす自然なやり取りを恋しく思う。ビデオ通話では体の動きで伝わる微妙な合図が失われるため、意思疎通はより難しくなりうる。さらに、仕事と私生活の境界が曖昧になり、一部の従業員は燃え尽きを経験する。長期的な結果はまだ不確かだ。専門家の中には混合型の働き方が標準になると予測する者もいれば、対面での協働が減ることで企業文化が弱まると懸念する者もいる。はっきりしているのは、従来のオフィス勤務がもはや唯一の選択肢ではないということだ。`,
+      gloss: { decade:'十年', transformed:'変化した', privilege:'特権', widespread:'広まった', adopted:'採用された', accelerated:'加速された', unforeseen:'予期しない', fundamentally:'根本的に', altered:'変えた', advocates:'支持者', considerable:'かなりの', eliminating:'取り除くこと', commute:'通勤', expenses:'費用', boundaries:'境界', drawbacks:'欠点', isolation:'孤立', spontaneous:'自発的な', subtle:'微妙な', cues:'合図', conveyed:'伝えられる', blur:'ぼやける', burnout:'燃え尽き', hybrid:'混合の' },
+      q: { question: 'Which is mentioned as a drawback of remote work?', choices: ['Higher office rent for workers.', 'Feelings of isolation and blurred work-life boundaries.', 'A shortage of computers.'], answer: 1, explain: '孤立感や仕事と私生活の境界の曖昧化が欠点として挙げられています。' }
+    },
+    {
+      title: 'The Ethics of Artificial Intelligence',
+      en: `As artificial intelligence becomes increasingly sophisticated, society faces a growing number of ethical dilemmas that demand careful consideration. AI systems are now capable of performing tasks that once required human judgment, from diagnosing diseases to determining who qualifies for a loan. While these applications promise remarkable efficiency, they also raise profound concerns. One of the most pressing issues is bias. AI systems learn from data, and if that data reflects existing prejudices, the technology may perpetuate or even amplify discrimination. Because these systems often operate as "black boxes," it can be extremely difficult to understand how they reach their conclusions, making such biases hard to detect. Another concern involves accountability. When an autonomous vehicle causes an accident, who should be held responsible—the programmer, the manufacturer, or the user? Traditional legal frameworks were not designed to address such questions. Despite these challenges, few would argue that AI development should be halted altogether, since the potential benefits are simply too great to ignore. Instead, experts emphasize the need for thoughtful regulation and transparency. By establishing clear ethical guidelines, society can harness the immense power of AI while minimizing its risks.`,
+      ja: `人工知能がますます高度になるにつれ、社会は慎重な検討を要する倫理的なジレンマにいっそう多く直面している。AIシステムは、病気の診断から誰が融資を受けられるかの判断まで、かつては人間の判断を必要とした作業を今や実行できる。こうした応用は目覚ましい効率を約束する一方で、深刻な懸念も引き起こす。最も差し迫った問題の一つが偏りだ。AIはデータから学習するため、そのデータが既存の先入観を反映していれば、技術は差別を存続させ、あるいは増幅さえしかねない。これらのシステムはしばしば「ブラックボックス」として働くため、どのように結論に至ったのかを理解するのが極めて難しく、そうした偏りは見つけにくい。もう一つの懸念は説明責任に関わる。自律走行車が事故を起こしたとき、誰が責任を負うべきなのか——プログラマーか、製造者か、それとも利用者か。従来の法的枠組みはこうした問いに対処するようには作られていない。こうした課題があるにもかかわらず、AIの開発をまったく止めるべきだと主張する人はほとんどいない。潜在的な利益があまりに大きく無視できないからだ。むしろ専門家は、思慮深い規制と透明性の必要性を強調する。明確な倫理指針を定めることで、社会はAIの計り知れない力を活用しつつ、その危険を最小限に抑えられる。`,
+      gloss: { sophisticated:'高度な', ethical:'倫理的な', dilemmas:'ジレンマ', judgment:'判断', diagnosing:'診断すること', qualifies:'資格を満たす', profound:'深刻な・深い', bias:'偏り', prejudices:'先入観', perpetuate:'存続させる', amplify:'増幅する', discrimination:'差別', accountability:'説明責任', autonomous:'自律的な', frameworks:'枠組み', halted:'止められた', regulation:'規制', transparency:'透明性', harness:'活用する', immense:'計り知れない' },
+      q: { question: 'What is the "black box" problem described in the passage?', choices: ['AI hardware overheating.', 'It is hard to understand how AI reaches its conclusions.', 'AI systems are too expensive to build.'], answer: 1, explain: '「どのように結論に至ったか理解しにくい」ことがブラックボックス問題として説明されています。' }
+    },
+  ]},
+  g1: { label: '1級', cefr: 'CEFR C1', color: '#C3B1E1', passages: [
+    {
+      title: 'The Paradox of Choice',
+      en: `Conventional wisdom holds that freedom of choice is an unambiguous good, and that the more options individuals have, the better off they will be. Yet a growing body of psychological research suggests that this relationship is far more complicated than it appears. Beyond a certain threshold, the proliferation of choices can prove not liberating but paralyzing. When confronted with an overwhelming number of alternatives, consumers frequently experience anxiety, indecision, and a diminished capacity to derive satisfaction from whatever they ultimately select. This phenomenon, often termed the "paradox of choice," has profound implications. Researchers have observed that individuals presented with a vast selection are, counterintuitively, less likely to make any decision at all. Even when they do choose, they tend to be plagued by lingering doubts, wondering whether an unexplored option might have yielded a superior outcome. Moreover, an abundance of options raises expectations to unrealistic heights; when reality inevitably falls short, disappointment ensues. Some psychologists advocate a strategy of "satisficing"—settling for an option that is good enough rather than exhaustively pursuing the optimal one. By deliberately constraining their choices, individuals may paradoxically achieve greater contentment.`,
+      ja: `一般通念では、選択の自由は明白な善であり、人が持つ選択肢が多ければ多いほど、その人はより幸福になると考えられている。しかし、増え続ける心理学の研究は、この関係が見かけよりはるかに複雑であることを示している。ある一定の閾値を超えると、選択肢の急増は解放的であるどころか、人を麻痺させうる。圧倒的な数の選択肢を前にすると、消費者はしばしば不安や優柔不断を感じ、最終的に選んだものから満足を引き出す力が弱まる。しばしば「選択のパラドックス」と呼ばれるこの現象は、深い意味を持つ。研究者たちは、膨大な選択肢を提示された人が、直感に反して、そもそも何の決定も下しにくくなることを観察してきた。たとえ選んだとしても、探らなかった選択肢のほうがより良い結果をもたらしたのではないかと、消えない疑念に悩まされがちだ。さらに、選択肢の豊富さは期待を非現実的なほど高くつり上げる。現実が必然的に及ばないとき、失望が訪れる。一部の心理学者は「満足化」という戦略——最適なものを徹底的に追い求めるのではなく、十分に良い選択肢で満足すること——を勧める。あえて自らの選択を制限することで、人は逆説的により大きな満足を得られるかもしれない。`,
+      gloss: { 'conventional':'従来の・一般の', unambiguous:'明白な', threshold:'閾値', proliferation:'急増', liberating:'解放的な', paralyzing:'麻痺させる', overwhelming:'圧倒的な', alternatives:'選択肢', indecision:'優柔不断', diminished:'減少した', derive:'引き出す', phenomenon:'現象', counterintuitively:'直感に反して', plagued:'悩まされる', lingering:'消えない', yielded:'生み出した', abundance:'豊富さ', ensues:'続いて起こる', advocate:'提唱する', satisficing:'満足化', exhaustively:'徹底的に', deliberately:'意図的に', constraining:'制限すること', contentment:'満足' },
+      q: { question: 'What does the strategy of "satisficing" involve?', choices: ['Always seeking the single best option.', 'Settling for an option that is good enough.', 'Avoiding all decisions entirely.'], answer: 1, explain: '「満足化」は最適を追い求めず十分に良い選択で満足することだと説明されています。' }
+    },
+    {
+      title: 'The Value of Solitude',
+      en: `In an age characterized by relentless connectivity and the incessant clamor of social media, solitude has come to be regarded with a curious mixture of suspicion and disdain. To be alone is often equated with loneliness, a condition to be pitied or remedied. Yet this conflation obscures a crucial distinction: whereas loneliness denotes an involuntary and painful sense of isolation, solitude represents a deliberate and often enriching withdrawal from the company of others. Throughout history, thinkers and artists have extolled the virtues of solitary reflection. It is in moments of quietude, free from the distractions imposed by society, that the mind is best able to engage in genuine introspection. Solitude affords the individual an opportunity to consolidate scattered thoughts and to cultivate a more authentic understanding of oneself. Contemporary society, however, seems increasingly inhospitable to such contemplative retreat, for the ubiquity of digital devices ensures that we are perpetually tethered to a stream of notifications. Reclaiming the lost art of solitude requires a conscious effort to carve out intervals of undisturbed reflection. By periodically embracing stillness, we may rediscover a wellspring of creativity and self-knowledge that the frantic pace of modern life too often suppresses.`,
+      ja: `絶え間ないつながりと、SNSの止むことのない喧噪によって特徴づけられる時代にあって、孤独は疑いと軽蔑の奇妙に入り混じった目で見られるようになった。一人でいることは、しばしば孤独感——同情されるか、治されるべき状態——と同一視される。しかしこの混同は、重要な区別を覆い隠している。孤独感が不本意で苦痛な孤立の感覚を意味するのに対し、独りの時間は他者との交わりからの意図的で、しばしば豊かにする退避を表すのだ。歴史を通じて、思想家や芸術家は独りの思索の美点を称賛してきた。社会が課す気を散らすものから解放された静けさの瞬間にこそ、心は真の内省に最もよく取り組める。独りの時間は、散らばった考えをまとめ、自分自身についてより本物の理解を育む機会を人に与える。しかし現代社会は、そうした瞑想的な退避にますます不向きに見える。デジタル機器の遍在によって、私たちは絶えず通知の流れに繋がれているからだ。失われた孤独の技術を取り戻すには、妨げられない思索の時間を意識的に切り開く努力が要る。ときおり静けさを受け入れることで、私たちは現代生活の慌ただしさがあまりにしばしば抑え込んでしまう、創造性と自己認識の源泉を再発見できるかもしれない。`,
+      gloss: { relentless:'容赦ない', incessant:'絶え間ない', clamor:'喧噪', solitude:'孤独・独りの時間', disdain:'軽蔑', equated:'同一視される', remedied:'治される', conflation:'混同', obscures:'覆い隠す', denotes:'意味する', involuntary:'不本意な', deliberate:'意図的な', enriching:'豊かにする', extolled:'称賛した', quietude:'静けさ', introspection:'内省', consolidate:'統合する', cultivate:'育む', authentic:'本物の', inhospitable:'不向きな', contemplative:'瞑想的な', ubiquity:'遍在', tethered:'繋がれた', wellspring:'源泉', frantic:'慌ただしい', suppresses:'抑え込む' },
+      q: { question: 'How does the passage distinguish solitude from loneliness?', choices: ['They mean exactly the same thing.', 'Solitude is deliberate and enriching, while loneliness is involuntary and painful.', 'Loneliness is chosen, while solitude is forced.'], answer: 1, explain: '孤独感は不本意で苦痛、独りの時間は意図的で豊かにするもの、と区別されています。' }
+    },
+  ]},
+};
+
+/* =====================================================================
    state
 ===================================================================== */
 let state = load();
@@ -455,7 +544,7 @@ function goTab(name) {
     b.style.opacity = on ? 1 : .55;
   });
   if (name === 'cards') startCards();
-  if (name === 'read')  { if (!currentPassage) generatePassage(); }
+  if (name === 'read')  renderReadTab();
   if (name === 'words') renderWordList();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -523,6 +612,144 @@ const masteryDots = (m) =>
 ===================================================================== */
 let currentPassage = null;   // { en, ja, targets:[word], graded:{en:bool} , source }
 let genSeed = 0;
+
+/* reading mode: 'mine' (AIモック) | 'eiken' (英検長文) */
+let readMode = 'mine';
+let eikenLevel = 'p2';
+let eikenIdx = 0;
+let currentEiken = null;     // { level, data, showJa, answered }
+
+function renderReadTab() {
+  const mineOn = readMode === 'mine';
+  // mode toggle styling
+  const on  = 'bg-coral text-white shadow-sm';
+  const off = 'text-ink/50';
+  document.getElementById('modeMine').className  = 'flex-1 rounded-full py-2 text-xs font-extrabold transition-all ' + (mineOn ? on : off);
+  document.getElementById('modeEiken').className = 'flex-1 rounded-full py-2 text-xs font-extrabold transition-all ' + (mineOn ? off : on);
+  document.getElementById('eikenLevels').classList.toggle('hidden', mineOn);
+
+  if (mineOn) { if (!currentPassage) generatePassage(); else renderRead(); }
+  else        { renderEikenChips(); renderEiken(); }
+}
+
+function setReadMode(mode) {
+  readMode = mode;
+  renderReadTab();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function shuffleRead() {
+  if (readMode === 'mine') { generatePassage(true); }
+  else {
+    const list = EIKEN[eikenLevel].passages;
+    eikenIdx = (eikenIdx + 1) % list.length;
+    renderEiken();
+  }
+}
+
+function renderEikenChips() {
+  document.querySelectorAll('.eiken-chip').forEach(b => {
+    const active = b.dataset.lv === eikenLevel;
+    const c = EIKEN[b.dataset.lv].color;
+    b.style.background = active ? c : '#fff';
+    b.style.color = active ? '#fff' : 'rgba(74,63,60,.55)';
+    b.style.boxShadow = active ? '0 4px 10px rgba(74,63,60,.12)' : '0 1px 3px rgba(74,63,60,.08)';
+  });
+}
+
+function selectEikenLevel(lv) {
+  eikenLevel = lv; eikenIdx = 0;
+  renderEikenChips();
+  renderEiken();
+}
+
+function renderEiken() {
+  const lv = EIKEN[eikenLevel];
+  const list = lv.passages;
+  const d = list[eikenIdx];
+  currentEiken = currentEiken && currentEiken.data === d
+    ? currentEiken : { level: eikenLevel, data: d, showJa: false, answered: null };
+  const glossSet = new Set(Object.keys(d.gloss).map(k => k.toLowerCase()));
+  const wordCount = d.en.trim().split(/\s+/).length;
+
+  // tokenize: gloss words get the "target" highlight; every word is tappable
+  const html = d.en.split(/(\s+)/).map(tok => {
+    if (/^\s+$/.test(tok) || tok === '') return tok || '';
+    const clean = tok.replace(/^["'(“]+|["')!?.,:;”—]+$/g, '');
+    const key = clean.toLowerCase();
+    if (!clean) return esc(tok);
+    const isKey = glossSet.has(key);
+    const known = !!findWord(key);
+    const cls = 'w-tok' + (isKey ? ' target' + (known ? ' done-ok' : '') : '');
+    return tok.replace(clean, `<span class="${cls}" onclick="tapWord(event,'${esc(key)}')">${esc(clean)}</span>`);
+  }).join('');
+
+  const q = d.q;
+  const ans = currentEiken.answered;
+  const area = document.getElementById('readArea');
+  area.innerHTML = `
+    <div class="bg-white rounded-4xl p-5 shadow-sm anim-fadeup">
+      <div class="flex items-center gap-2 mb-1 flex-wrap">
+        <span class="text-[10px] font-extrabold text-white rounded-full px-2.5 py-1" style="background:${lv.color}">🎓 英検${lv.label}</span>
+        <span class="text-[10px] text-ink/40">${lv.cefr}</span>
+        <span class="text-[10px] text-ink/40">約${wordCount}語</span>
+        <span class="text-[10px] text-ink/40 ml-auto">${eikenIdx + 1}/${list.length}</span>
+      </div>
+      <div class="font-extrabold text-base mb-2">${esc(d.title)}</div>
+      <p class="leading-8 text-[15px] font-num">${html}</p>
+
+      <button onclick="toggleEikenJa()" class="mt-4 w-full bg-sky2/40 text-ink font-bold rounded-2xl py-2.5 text-sm active:scale-[.98] transition">
+        ${currentEiken.showJa ? '🙈 日本語訳をかくす' : '🇯🇵 日本語訳（全文）'}
+      </button>
+      <div class="${currentEiken.showJa ? '' : 'hidden'} mt-3 bg-cream rounded-2xl p-4 text-[13px] leading-7 anim-fadeup">${esc(d.ja)}</div>
+    </div>
+
+    <div class="bg-white rounded-4xl p-5 shadow-sm mt-3">
+      <div class="text-xs font-bold text-ink/50 mb-1">💡 色つきの単語は英検頻出レベル。知らない単語はタップして意味を確認 → カードに登録しよう。</div>
+      <div class="text-[11px] text-ink/40">この長文の重要語 <b>${Object.keys(d.gloss).length}</b> 語 ／ 登録済み <b class="text-leafD">${Object.keys(d.gloss).filter(k => findWord(k)).length}</b> 語</div>
+    </div>
+
+    <div class="bg-white rounded-4xl p-5 shadow-sm mt-3">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-[10px] font-bold bg-lav/25 text-[#6b52a3] rounded-full px-2.5 py-1">📝 内容一致問題</span>
+      </div>
+      <div class="font-bold text-sm mb-3">${esc(q.question)}</div>
+      <div class="space-y-2">
+        ${q.choices.map((c, i) => {
+          let cls = 'bg-cream';
+          if (ans !== null) {
+            if (i === q.answer) cls = 'bg-leaf/20 ring-2 ring-leaf';
+            else if (i === ans) cls = 'bg-lav/20 ring-2 ring-lav';
+            else cls = 'bg-cream opacity-60';
+          }
+          return `<button onclick="answerEiken(${i})" ${ans !== null ? 'disabled' : ''}
+            class="w-full text-left rounded-2xl px-4 py-3 text-sm font-medium transition-all ${cls} ${ans === null ? 'active:scale-[.98]' : ''}">
+            <span class="font-extrabold mr-1">${String.fromCharCode(65 + i)}.</span>${esc(c)}
+            ${ans !== null && i === q.answer ? ' ✅' : ans === i && i !== q.answer ? ' ❌' : ''}
+          </button>`;
+        }).join('')}
+      </div>
+      ${ans !== null ? `<div class="mt-3 rounded-2xl p-3 text-[13px] leading-6 ${ans === q.answer ? 'bg-leaf/15' : 'bg-lav/15'} anim-fadeup">
+        <b>${ans === q.answer ? '正解！🎉' : '惜しい…'}</b> ${esc(q.explain)}
+      </div>
+      <button onclick="finishEiken()" class="mt-3 w-full bg-coral text-white font-extrabold rounded-2xl py-3 shadow-[0_4px_0_#F0703F] active:translate-y-0.5 active:shadow-none transition-all">📚 読了！つぎの長文へ</button>` : ''}
+    </div>`;
+}
+
+function toggleEikenJa() { currentEiken.showJa = !currentEiken.showJa; renderEiken(); }
+
+function answerEiken(i) {
+  if (currentEiken.answered !== null) return;
+  currentEiken.answered = i;
+  renderEiken();
+}
+
+function finishEiken() {
+  markStudied();
+  toast('英検長文を読了！🔥');
+  shuffleRead();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 function pickTargets() {
   let pool = dueWords();
@@ -655,14 +882,21 @@ function finishReading() {
   generatePassage(true);
 }
 
+/* re-render whichever reading view is active */
+function rerenderRead() {
+  if (readMode === 'eiken') { if (currentEiken) renderEiken(); }
+  else if (currentPassage) renderRead();
+}
+
 /* ---------- tap a word inside the passage ---------- */
 function tapWord(ev, key) {
   ev.stopPropagation();
+  const eiken = readMode === 'eiken';
   const p = currentPassage;
   const registered = findWord(key);
-  const isTarget = p && p.targets.some(w => w.en === key);
+  const isTarget = !eiken && p && p.targets.some(w => w.en === key);
 
-  // ターゲット単語の意味をタップで確認 → 忘却曲線的に「まだ」扱い
+  // ターゲット単語の意味をタップで確認 → 忘却曲線的に「まだ」扱い（マイ単語モードのみ）
   let autoNote = '';
   if (isTarget && p.graded[key] === undefined) {
     p.graded[key] = false;
@@ -670,7 +904,9 @@ function tapWord(ev, key) {
     renderRead();
   }
 
-  const dictJa = registered ? registered.ja : DICT[key];
+  // 意味の優先順位: 登録済み > 英検の語注 > 内蔵辞書
+  const glossJa = eiken && currentEiken ? currentEiken.data.gloss[key] : null;
+  const dictJa = registered ? registered.ja : (glossJa || DICT[key]);
   let body;
   if (dictJa) {
     body = `
@@ -706,7 +942,7 @@ function registerFromSheet(en, ja) {
     toast(`「${en}」をカードに追加しました 🌱`);
   }
   closeSheet();
-  if (currentPassage) renderRead();
+  rerenderRead();
 }
 
 function openSheet(html) {
