@@ -331,19 +331,75 @@ const TEMPLATES = [
   },
 ];
 
-/* generic frames used when no template matches (simulated dynamic generation) */
-const GENERIC_FRAMES = [
-  {
-    en: (ws) => `On my desk there is a notebook filled with new words. Today it opened to ${listEn(ws)}. I wrote a tiny story with them, read it aloud twice, and felt each word slowly become mine — the quiet magic of learning.`,
-    ja: (ws) => `机の上には、新しい単語でいっぱいのノートがある。今日開いたページには ${listJa(ws)} が並んでいた。それらで小さな物語を書き、二度声に出して読むと、一語一語がゆっくり自分のものになっていくのを感じた——学びの静かな魔法だ。`
-  },
-  {
-    en: (ws) => `While walking home this evening, I tried to use ${listEn(ws)} in sentences of my own. Some attempts sounded strange, but saying them out loud made the meanings stick, and the town lights felt a little brighter.`,
-    ja: (ws) => `今日の帰り道、${listJa(ws)} を自分の文で使ってみた。おかしな文もあったけれど、声に出すことで意味がしっかり記憶に残り、町の明かりが少しだけ明るく感じられた。`
-  },
+/* -----------------------------------------------------------------
+   テンプレ未一致時の擬似AI生成（引用符で並べず、品詞を推定して文中に自然に織り込む）
+------------------------------------------------------------------ */
+// ざっくり品詞推定（語尾ベース）
+function guessPOS(w) {
+  const s = String(w).toLowerCase().trim();
+  if (s.includes(' ')) return 'phrase';
+  if (/ly$/.test(s)) return 'adv';
+  if (/(ate|ify|ize|ise)$/.test(s)) return 'verb';
+  if (/(ing)$/.test(s)) return 'ing';
+  if (/(ous|ful|ive|ic|able|ible|ant|ent|ish|less|ary|ory|al)$/.test(s)) return 'adj';
+  if (/(tion|sion|ment|ness|ity|ship|ism|ance|ence|ology|ure|hood|dom)$/.test(s)) return 'noun';
+  if (/ed$/.test(s)) return 'adj';
+  return 'noun';
+}
+
+// 品詞ごとの「担い手」文（{w}=英単語 / {m}=意味）
+const CARRIERS = {
+  noun: [
+    { en: `lately, the idea of {w} has quietly occupied my thoughts`, ja: `最近、{w}（{m}）という考えが静かに頭を占めている` },
+    { en: `on the way, a single notion — {w} — caught me off guard`, ja: `その途中、{w}（{m}）という一つの概念が不意に心をとらえた` },
+    { en: `I finally began to grasp what {w} really means`, ja: `私はようやく、{w}（{m}）が本当は何を意味するのかを掴み始めた` },
+  ],
+  verb: [
+    { en: `each day I try to {w} a little more naturally than before`, ja: `毎日、以前より少しでも自然に{w}（{m}）しようとしている` },
+    { en: `I am still learning how to {w} without hesitation`, ja: `私は今も、ためらわずに{w}（{m}）する方法を学んでいる` },
+  ],
+  adj: [
+    { en: `for a moment, everything around me felt strangely {w}`, ja: `一瞬、周りのすべてが不思議と{w}（{m}）に感じられた` },
+    { en: `the evening air seemed unusually {w} today`, ja: `今日の夕方の空気は、いつになく{w}（{m}）に思えた` },
+  ],
+  adv: [
+    { en: `things were shifting around me, almost {w}`, ja: `私の周りのものは、ほとんど{w}（{m}）に移り変わっていた` },
+    { en: `she closed the book {w} and looked up`, ja: `彼女は{w}（{m}）本を閉じ、顔を上げた` },
+  ],
+  ing: [
+    { en: `there is something calming about {w} in the quiet`, ja: `静けさの中で{w}（{m}）することには、どこか心を落ち着かせるものがある` },
+    { en: `I spent the whole afternoon {w}, and time slipped away`, ja: `午後じゅう{w}（{m}）して過ごすと、時間はあっという間に過ぎた` },
+  ],
+  phrase: [
+    { en: `a photo of {w} was pinned above my desk`, ja: `机の上には{w}（{m}）の写真が貼ってあった` },
+    { en: `someone mentioned {w}, and I grew curious`, ja: `誰かが{w}（{m}）の話をして、私は興味がわいた` },
+  ],
+};
+const INTROS = [
+  { en: `This evening, my mind wandered through the new words I had collected.`, ja: `今夜、私の心は集めたばかりの新しい単語の間をさまよった。` },
+  { en: `On the quiet walk home, a few words I had just learned drifted back to me.`, ja: `静かな帰り道、覚えたばかりのいくつかの言葉がふと戻ってきた。` },
 ];
-const listEn = (ws) => ws.map(w=>`"${w.en}"`).join(ws.length>2? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1');
-const listJa = (ws) => ws.map(w=>`"${w.en}"（${w.ja}）`).join('、');
+const CLOSINGS = [
+  { en: `Saying them softly to myself, I felt each meaning settle a little deeper.`, ja: `そっと口に出してみると、それぞれの意味が少しだけ深く根づくのを感じた。` },
+  { en: `By the time I looked up, the words no longer felt like strangers.`, ja: `顔を上げる頃には、その言葉たちはもう他人のようには感じられなかった。` },
+];
+
+function composeNatural(targets, seed) {
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const intro = INTROS[seed % INTROS.length];
+  const closing = CLOSINGS[seed % CLOSINGS.length];
+  const enParts = [], jaParts = [];
+  targets.forEach((w, i) => {
+    const bank = CARRIERS[guessPOS(w.en)] || CARRIERS.noun;
+    const c = bank[(seed + i) % bank.length];
+    enParts.push(cap(c.en.replace('{w}', w.en)) + '.');
+    jaParts.push(c.ja.replace('{w}', w.en).replace('{m}', w.ja) + '。');
+  });
+  return {
+    en: [intro.en, ...enParts, closing.en].join(' '),
+    ja: intro.ja + jaParts.join('') + closing.ja,
+  };
+}
 
 /* ---------- mini built-in dictionary for tap-lookup inside passages ---------- */
 const DICT = {
@@ -788,10 +844,10 @@ function generatePassage(shuffle) {
     en = chosen.en; ja = chosen.ja;
     targets = chosen.words.map(findWord).filter(Boolean);
   } else {
-    // 汎用フレームで動的に組み立て（シミュレーション）
+    // 品詞を推定して各単語を文中に自然に織り込む（擬似AI生成）
     targets = pool.slice(0, Math.min(4, pool.length));
-    const frame = GENERIC_FRAMES[genSeed % GENERIC_FRAMES.length];
-    en = frame.en(targets); ja = frame.ja(targets);
+    const out = composeNatural(targets, genSeed);
+    en = out.en; ja = out.ja;
   }
   currentPassage = { en, ja, targets, graded: {}, showJa: false };
   renderRead();
