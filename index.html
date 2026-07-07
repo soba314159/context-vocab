@@ -90,6 +90,9 @@ tailwind.config = {
 
   .mastery-dot { width:7px; height:7px; border-radius:9999px; }
 
+  /* island vocab motifs */
+  .motif { animation: pop .55s cubic-bezier(.34,1.56,.64,1) both; }
+
   .conf { position:absolute; top:0; width:8px; height:8px; border-radius:2px; animation: confetti 1s ease-out forwards; }
 
   ::-webkit-scrollbar { width:0; height:0; }
@@ -158,6 +161,8 @@ tailwind.config = {
           <path d="M106 62 A54 54 0 0 1 214 62" fill="none" stroke="#FFD98E" stroke-width="4" opacity=".7"/>
           <path d="M112 62 A48 48 0 0 1 208 62" fill="none" stroke="#A8D8EA" stroke-width="4" opacity=".7"/>
         </g>
+        <!-- 登録した単語のイメージに応じて出現する要素（JSが描画） -->
+        <g id="islandDynamic"></g>
       </svg>
 
       <!-- overlay stats -->
@@ -181,7 +186,10 @@ tailwind.config = {
 
     <!-- ---------- HOME ---------- -->
     <section id="panel-home" class="tab-panel active">
-      <h2 class="font-bold text-lg mb-2">きょうのミッション</h2>
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="font-bold text-lg">きょうのミッション</h2>
+        <span class="text-xs bg-white rounded-full px-3 py-1 font-bold shadow-sm">きょう学んだ <b id="learnedToday" class="text-coralD font-num">0</b> 語</span>
+      </div>
       <div class="space-y-3">
         <button onclick="goTab('read')" class="w-full bg-coral text-white rounded-3xl p-4 text-left shadow-[0_6px_0_#F0703F] active:translate-y-1 active:shadow-none transition-all">
           <div class="font-extrabold text-base">📖 きみだけの英文をよむ</div>
@@ -199,6 +207,13 @@ tailwind.config = {
       <div id="todayDoneMsg" class="hidden mt-4 bg-sand rounded-3xl p-4 text-center text-sm font-bold anim-pop">
         ✨ 今日の学習クリア！ストリーク継続中 🔥
       </div>
+
+      <!-- share to Instagram etc. -->
+      <button onclick="shareToInsta()" class="w-full mt-4 rounded-3xl p-4 text-left shadow-[0_6px_0_#c99] active:translate-y-1 active:shadow-none transition-all text-white"
+        style="background:linear-gradient(120deg,#F58529,#DD2A7B 55%,#8134AF)">
+        <div class="font-extrabold text-base">📸 今日の成果をシェア</div>
+        <div class="text-white/90 text-xs mt-1">島＋学んだ語数のカードを作ってInstagram等に投稿</div>
+      </button>
 
       <!-- install to home screen (PWA) -->
       <button id="installBtn" onclick="doInstall()" class="hidden w-full mt-4 bg-white rounded-3xl p-4 text-left shadow-[0_6px_0_#EADFCE] active:translate-y-1 active:shadow-none transition-all">
@@ -528,8 +543,21 @@ function gradeWord(w, ok) {
   save(); renderHeader();
 }
 
-/* ---------- streak ---------- */
+/* ---------- daily learned counter ---------- */
 const dayKey = (t) => new Date(t).toISOString().slice(0,10);
+function learnedToday() {
+  return (state.daily && state.daily.date === dayKey(Date.now())) ? state.daily.count : 0;
+}
+function addLearned(n) {
+  const t = dayKey(Date.now());
+  if (!state.daily || state.daily.date !== t) state.daily = { date: t, count: 0 };
+  state.daily.count += n;
+  save();
+  const el = document.getElementById('learnedToday');
+  if (el) el.textContent = learnedToday();
+}
+
+/* ---------- streak ---------- */
 function markStudied() {
   const today = dayKey(Date.now());
   if (state.lastDone === today) return false;
@@ -545,6 +573,8 @@ function markStudied() {
 /* =====================================================================
    header / island
 ===================================================================== */
+const islandLevel = () => 1 + Math.floor(points() / 7);
+
 function renderHeader() {
   const p = points();
   document.getElementById('pointsNum').textContent = p;
@@ -552,15 +582,66 @@ function renderHeader() {
   document.getElementById('totalNum').textContent  = state.words.length;
   document.getElementById('streakNum').textContent = state.streak;
   document.getElementById('homeDue').textContent   = dueWords().length;
+  document.getElementById('learnedToday').textContent = learnedToday();
   document.getElementById('flame').className = state.streak > 0 ? 'inline-block anim-flame' : 'inline-block grayscale opacity-40';
 
-  let lv = 1 + Math.floor(p / 7);
-  document.getElementById('islandLv').textContent = 'Lv.' + lv;
+  document.getElementById('islandLv').textContent = 'Lv.' + islandLevel();
   document.querySelectorAll('#island .isl').forEach(el => {
     el.classList.toggle('show', p >= +el.dataset.th);
   });
+  renderIsland();
   if (state.lastDone === dayKey(Date.now()))
     document.getElementById('todayDoneMsg').classList.remove('hidden');
+}
+
+/* -----------------------------------------------------------------
+   登録した単語の「イメージ」に応じて島に要素を出現させる
+------------------------------------------------------------------ */
+// 各モチーフ: emoji / 位置(viewBox 320x170) / 反応するキーワード(英語トークン・日本語意味)
+const MOTIFS = [
+  // 空
+  { e:'☁️', x:106, y:30, s:15, en:['cloud','fog','sky'], ja:['雲','霧','空'] },
+  { e:'🕊️', x:56,  y:40, s:13, en:['bird','dove','wing','fly','flew','flight','feather'], ja:['鳥','鳩','翼','飛','羽'] },
+  { e:'🦋', x:150, y:64, s:12, en:['butterfly','insect','moth'], ja:['蝶','昆虫','虫'] },
+  { e:'⭐', x:236, y:24, s:13, en:['star','shine','sparkle'], ja:['星','輝'] },
+  { e:'🌙', x:299, y:22, s:14, en:['moon','lunar','midnight'], ja:['月'] },
+  { e:'🎈', x:296, y:58, s:14, en:['balloon','dream','float','hope','wish'], ja:['風船','気球','夢','希望','願'] },
+  { e:'✈️', x:172, y:26, s:14, en:['plane','airplane','jet','travel','trip','journey','flight'], ja:['飛行機','旅','出発'] },
+  { e:'🎵', x:202, y:52, s:13, en:['music','song','sing','sang','melody','sound','tune','choir','hymn'], ja:['音楽','歌','旋律','音','聖歌'] },
+  { e:'💗', x:32,  y:58, s:13, en:['love','heart','friend','kind','dear','affection'], ja:['愛','心','友','親切','恋','好'] },
+  // 海
+  { e:'🐟', x:60,  y:150, s:13, en:['fish','swim','swam','sea','ocean','marine'], ja:['魚','泳','海'] },
+  { e:'🐋', x:250, y:150, s:15, en:['whale','dolphin'], ja:['鯨','クジラ','イルカ'] },
+  { e:'⛵', x:98,  y:152, s:14, en:['boat','ship','sail','yacht','voyage','harbor'], ja:['船','帆','航海','港'] },
+  { e:'🗼', x:300, y:118, s:14, en:['tower','lighthouse','beacon','landmark'], ja:['塔','灯台'] },
+  // 陸
+  { e:'⛰️', x:58,  y:100, s:15, en:['mountain','hill','peak','climb','summit','alps'], ja:['山','丘','登','頂'] },
+  { e:'🌳', x:80,  y:112, s:15, en:['tree','forest','wood','woods','leaf','leaves','plant','nature','grow','branch'], ja:['木','森','林','葉','植物','自然','枝'] },
+  { e:'🌸', x:104, y:122, s:13, en:['flower','bloom','rose','blossom','spring','petal','garden'], ja:['花','咲','春','バラ','庭'] },
+  { e:'🍄', x:124, y:123, s:12, en:['mushroom','fungus'], ja:['きのこ','茸'] },
+  { e:'🐱', x:144, y:122, s:13, en:['cat','kitten','kitty'], ja:['猫'] },
+  { e:'🐶', x:158, y:124, s:13, en:['dog','puppy','hound'], ja:['犬'] },
+  { e:'🏰', x:126, y:100, s:16, en:['castle','fortress','palace','kingdom','king','queen','knight','royal'], ja:['城','要塞','宮殿','王','騎士'] },
+  { e:'⛪', x:206, y:104, s:15, en:['church','cathedral','temple','chapel','pray','holy','faith','sacred'], ja:['教会','大聖堂','寺','礼拝','祈','神','信仰'] },
+  { e:'📚', x:210, y:122, s:13, en:['book','read','study','library','knowledge','word','story','novel'], ja:['本','読','学','図書','知識','言葉','物語'] },
+];
+
+function wordMatchesMotif(w, m) {
+  const toks = String(w.en || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  const ja = String(w.ja || '');
+  const hitEn = m.en.some(k => toks.some(t => t === k || t === k + 's' || (k.length >= 4 && t.startsWith(k))));
+  const hitJa = m.ja.some(k => ja.includes(k));
+  return hitEn || hitJa;
+}
+
+const matchedMotifs = () => MOTIFS.filter(m => state.words.some(w => wordMatchesMotif(w, m))).slice(0, 14);
+
+function renderIsland() {
+  const g = document.getElementById('islandDynamic');
+  if (!g) return;
+  g.innerHTML = matchedMotifs().map(m =>
+    `<text x="${m.x}" y="${m.y}" font-size="${m.s}" text-anchor="middle" dominant-baseline="central" class="motif">${m.e}</text>`
+  ).join('');
 }
 
 function burstConfetti() {
@@ -655,6 +736,7 @@ function answerCard(ok) {
   const w = cardQueue[cardIdx];
   gradeWord(w, ok);
   cardDoneCount++;
+  addLearned(1);
   if (!ok) toast(`「${w.en}」はすぐ再登場します`);
   cardIdx++;
   renderCard();
@@ -801,6 +883,7 @@ function answerEiken(i) {
 }
 
 function finishEiken() {
+  addLearned(1);
   markStudied();
   toast('英検長文を読了！🔥');
   shuffleRead();
@@ -932,6 +1015,7 @@ function finishReading() {
     gradeWord(word, p.graded[w.en] === true);
     p.graded[w.en] === true ? up++ : down++;
   });
+  addLearned(up + down);
   markStudied();
   toast(`熟練度UP ${up} 語 / 要復習 ${down} 語`);
   currentPassage = null;
@@ -994,7 +1078,7 @@ function registerFromSheet(en, ja) {
   }
   if (!findWord(en)) {
     state.words.push(makeWord(en, ja));
-    save(); renderHeader();
+    save(); addLearned(1); renderHeader();
     toast(`「${en}」をカードに追加しました 🌱`);
   }
   closeSheet();
@@ -1022,7 +1106,7 @@ function addWordFromForm() {
   }
   if (findWord(en)) { toast('すでに登録されています'); return; }
   state.words.push(makeWord(en, ja));
-  save(); renderHeader(); renderWordList();
+  save(); addLearned(1); renderHeader(); renderWordList();
   enEl.value = ''; jaEl.value = '';
   toast(`「${en}」を追加！島が育つよ 🌱`);
 }
@@ -1054,11 +1138,118 @@ function deleteWord(id) {
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* =====================================================================
-   MVP: feedback / analytics / PWA install
+   MVP: share card (Instagram等) / feedback / analytics / PWA install
 ===================================================================== */
 function sendFeedback(ev) {
   if (ev) ev.preventDefault();
   window.location.href = FEEDBACK_URL;
+}
+
+/* ---------- 成果カード画像を生成して共有 ---------- */
+const loadImg = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function buildShareImage() {
+  // 島SVGを静止画としてラスタライズ（非表示の成長要素は除去、アニメ停止）
+  // 絵文字モチーフはラスタライズ非対応環境があるため、SVGからは外してcanvasに直接描画する
+  const svg = document.getElementById('island').cloneNode(true);
+  svg.querySelectorAll('.isl:not(.show)').forEach(el => el.remove());
+  const dyn = svg.querySelector('#islandDynamic'); if (dyn) dyn.remove();
+  svg.querySelectorAll('*').forEach(el => { el.style.animation = 'none'; el.style.opacity = el.style.opacity || '1'; });
+  svg.setAttribute('width', '640'); svg.setAttribute('height', '340');
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const svgStr = new XMLSerializer().serializeToString(svg);
+  const islandImg = await loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr));
+
+  const W = 1080, H = 1350, cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#EAF6FB'); bg.addColorStop(1, '#FDF6EC');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center'; ctx.fillStyle = '#4A3F3C';
+  ctx.font = '800 52px "Nunito", sans-serif';
+  ctx.fillText('🏝️ ContextVocab', W / 2, 118);
+
+  // island card
+  const iw = 940, ih = iw * 340 / 640, ix = (W - iw) / 2, iy = 170;
+  ctx.save();
+  roundRect(ctx, ix, iy, iw, ih, 44); ctx.fillStyle = '#BFE3F2'; ctx.fill();
+  ctx.clip();
+  ctx.drawImage(islandImg, ix, iy, iw, ih);
+  // vocab motifs painted directly (crisp emoji on every platform)
+  const sc = iw / 320;
+  ctx.textBaseline = 'middle';
+  matchedMotifs().forEach(m => {
+    ctx.font = Math.round(m.s * sc * 1.25) + 'px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif';
+    ctx.fillText(m.e, ix + m.x * sc, iy + m.y * (ih / 170));
+  });
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+
+  // big number
+  const n = learnedToday();
+  ctx.fillStyle = '#F0703F'; ctx.font = '900 190px "Nunito", sans-serif';
+  ctx.fillText(String(n), W / 2, iy + ih + 250);
+  ctx.fillStyle = '#4A3F3C'; ctx.font = '800 56px "Zen Maru Gothic", sans-serif';
+  ctx.fillText('今日学んだ語数', W / 2, iy + ih + 330);
+
+  // streak + totals
+  ctx.font = '800 56px "Zen Maru Gothic", sans-serif'; ctx.fillStyle = '#4A3F3C';
+  ctx.fillText('🔥 ' + state.streak + '日連続    📚 登録 ' + state.words.length + '語', W / 2, iy + ih + 430);
+  ctx.fillStyle = '#57A84E'; ctx.font = '700 44px "Zen Maru Gothic", sans-serif';
+  ctx.fillText('マイ・アイランド Lv.' + islandLevel() + '  ・  育てポイント ' + points() + 'pt', W / 2, iy + ih + 500);
+
+  ctx.fillStyle = '#9b8f8a'; ctx.font = '600 38px "Nunito", sans-serif';
+  const d = new Date();
+  const ds = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
+  ctx.fillText(ds + '   |   soba314159.github.io/context-vocab', W / 2, H - 66);
+
+  return new Promise(res => cv.toBlob(res, 'image/png'));
+}
+
+async function shareToInsta() {
+  toast('カードを作成中…📸');
+  let blob;
+  try { blob = await buildShareImage(); } catch (e) { toast('画像の生成に失敗しました'); return; }
+  if (!blob) { toast('画像の生成に失敗しました'); return; }
+
+  const file = new File([blob], 'contextvocab.png', { type: 'image/png' });
+  const caption =
+    `今日は英単語を${learnedToday()}語 学習！🔥${state.streak}日連続でマイ・アイランドが育ってます🏝️\n` +
+    `#ContextVocab #英語学習 #英検 #単語帳\nsoba314159.github.io/context-vocab`;
+
+  // モバイルはネイティブ共有シート（Instagram等が選べる）
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text: caption, title: 'ContextVocab' }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+
+  // フォールバック: 画像を保存＋キャプションをコピー
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'contextvocab.png'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  let copied = false;
+  try { await navigator.clipboard.writeText(caption); copied = true; } catch (e) {}
+  openSheet(`
+    <div class="text-center">
+      <div class="text-4xl mb-2">📸</div>
+      <div class="font-extrabold mb-1">カード画像を保存しました</div>
+      <div class="text-xs text-ink/50 mb-3">Instagramアプリを開いて、保存した画像で投稿してね（ストーリーズ／フィード どちらもOK）。${copied ? 'キャプションはコピー済みです。' : ''}</div>
+      <div class="bg-cream rounded-2xl p-3 text-[11px] text-left whitespace-pre-wrap leading-5">${esc(caption)}</div>
+      ${copied ? '' : '<button onclick="navigator.clipboard.writeText(this.dataset.c).then(()=>toast(\'コピーしました\'))" data-c="'+esc(caption)+'" class="mt-3 w-full bg-white shadow-sm rounded-2xl py-2.5 text-sm font-bold">キャプションをコピー</button>'}
+      <button onclick="closeSheet()" class="mt-3 w-full bg-coral text-white font-extrabold rounded-2xl py-3 shadow-[0_4px_0_#F0703F] active:translate-y-0.5 active:shadow-none transition-all">OK</button>
+    </div>`);
 }
 
 /* --- lightweight open counter (privacy-friendly, no cookies/PII) --- */
