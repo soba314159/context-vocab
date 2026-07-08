@@ -399,13 +399,125 @@ const CLOSINGS = [
   { en: `By the time I looked up, the words no longer felt like strangers.`, ja: `顔を上げる頃には、その言葉たちはもう他人のようには感じられなかった。` },
 ];
 
+/* -----------------------------------------------------------------
+   トピック（分野）エンジン — 単語の意味から分野を推定し、その文脈で英文を組み立てる
+   例: martyr→信仰, race→アメリカ史, galaxy→科学
+------------------------------------------------------------------ */
+const TOPICS = [
+  { id: 'religion', label: '信仰・宗教',
+    en: ['martyr','faith','saint','sin','sinful','pray','prayer','holy','sacred','church','cathedral','gospel','soul','divine','worship','priest','cross','crucifix','resurrection','mercy','heaven','hell','angel','sermon','pilgrim','pilgrimage','monk','salvation','scripture','ritual','sacrifice','sacred','miracle'],
+    ja: ['殉教','信仰','聖','罪','祈','神','教会','大聖堂','福音','魂','崇拝','司祭','十字','復活','慈悲','天国','地獄','天使','説教','巡礼','修道','救済','聖書','儀式','犠牲','奇跡'],
+    intro: { en: `In the stillness of the old cathedral, candlelight wavered against ancient stone.`, ja: `古い大聖堂の静けさの中で、ろうそくの光が古い石壁に揺れていた。` },
+    close: { en: `And in that silence, faith and doubt seemed to share the same breath.`, ja: `その静けさの中で、信仰と疑いは同じ息をしているように思えた。` },
+    carriers: [
+      { en: `The old priest spoke of {w} as though it were the heart of everything`, ja: `年老いた司祭は、{w}（{m}）をまるで万物の核心であるかのように語った` },
+      { en: `To the faithful, {w} was not a mere word but a way of living`, ja: `信仰する者にとって、{w}（{m}）は単なる言葉ではなく、生き方そのものだった` },
+      { en: `Through their prayers, the pilgrims sought to understand {w} at last`, ja: `祈りを通じて、巡礼者たちはついに{w}（{m}）を理解しようとした` },
+    ] },
+  { id: 'history', label: 'アメリカ史・社会',
+    en: ['race','racial','slavery','slave','civil','rights','freedom','liberty','equality','segregation','revolution','empire','colony','colonial','independence','constitution','president','democracy','nation','immigrant','frontier','abolition','abolish','protest','suffrage','citizen','union','plantation'],
+    ja: ['人種','奴隷','公民','権利','自由','平等','差別','隔離','革命','帝国','植民','独立','憲法','大統領','民主','国家','移民','開拓','廃止','抗議','参政','市民','連邦','農園'],
+    intro: { en: `The history books tell of a nation still struggling to become what it promised.`, ja: `歴史書は、約束した姿になろうともがき続ける国の物語を伝えている。` },
+    close: { en: `The past, it seemed, was never quite finished with the present.`, ja: `過去は、現在との間でまだ決着がついていないようだった。` },
+    carriers: [
+      { en: `For generations, ordinary people fought and bled over the meaning of {w}`, ja: `幾世代にもわたり、名もなき人々が{w}（{m}）の意味をめぐって闘い、血を流した` },
+      { en: `The speeches of that era returned, again and again, to {w}`, ja: `その時代の演説は、幾度となく{w}（{m}）へと立ち返った` },
+      { en: `To understand this country, one must first reckon with {w}`, ja: `この国を理解するには、まず{w}（{m}）と向き合わねばならない` },
+    ] },
+  { id: 'science', label: '科学・宇宙',
+    en: ['atom','molecule','cell','gene','genetic','dna','gravity','energy','galaxy','universe','cosmos','planet','orbit','evolution','evolve','species','quantum','particle','neuron','brain','chemical','physics','biology','experiment','theory','radiation','electron','organism','hypothesis'],
+    ja: ['原子','分子','細胞','遺伝','重力','エネルギー','銀河','宇宙','惑星','軌道','進化','種','量子','粒子','神経','脳','化学','物理','生物','実験','理論','放射','電子','生命体','仮説'],
+    intro: { en: `Under the laboratory's pale light, the universe felt suddenly within reach.`, ja: `実験室の淡い光の下で、宇宙が急に手の届くもののように感じられた。` },
+    close: { en: `Each answer, as always in science, opened the door to a dozen new questions.`, ja: `科学ではいつものように、一つの答えは十の新たな問いへの扉を開いた。` },
+    carriers: [
+      { en: `The researchers spent years trying to explain {w}`, ja: `研究者たちは{w}（{m}）を説明しようと何年も費やした` },
+      { en: `Nothing in the natural world quite made sense without {w}`, ja: `{w}（{m}）なしには、自然界の何ひとつ筋が通らなかった` },
+      { en: `Her whole theory rested on a single idea: {w}`, ja: `彼女の理論すべては、{w}（{m}）という一つの考えに支えられていた` },
+    ] },
+  { id: 'nature', label: '自然・季節',
+    en: ['forest','mountain','river','ocean','valley','desert','meadow','storm','snow','autumn','spring','harvest','wildlife','glacier','coast','jungle','dawn','dusk','horizon','wilderness','blossom','tide','wind','cliff','pasture'],
+    ja: ['森','山','川','海','谷','砂漠','草原','嵐','雪','秋','春','収穫','野生','氷河','海岸','密林','夜明け','夕暮れ','地平','荒野','花','潮','風','崖','牧'],
+    intro: { en: `At dawn the valley lay wrapped in mist, utterly still.`, ja: `夜明け、谷は霧に包まれ、まったく静まり返っていた。` },
+    close: { en: `The wild had its own quiet grammar, older than any human word.`, ja: `荒野には、どんな人間の言葉よりも古い、静かな文法があった。` },
+    carriers: [
+      { en: `Far from the city, {w} took on a beauty I had never noticed before`, ja: `街を離れると、{w}（{m}）はこれまで気づかなかった美しさを帯びた` },
+      { en: `The old traveler filled pages and pages of his journal with {w}`, ja: `年老いた旅人は、日記の何ページも{w}（{m}）で埋め尽くした` },
+      { en: `Everything in that landscape seemed to begin with {w}`, ja: `その風景のすべては、{w}（{m}）から始まっているように思えた` },
+    ] },
+  { id: 'war', label: '戦争・紛争',
+    en: ['war','battle','soldier','army','weapon','enemy','siege','fortress','victory','defeat','general','troops','invasion','invade','retreat','treaty','rifle','cannon','trench','ally','alliance','conquest','conquer','warrior','warfare'],
+    ja: ['戦争','戦い','兵士','軍','武器','敵','包囲','要塞','勝利','敗北','将軍','部隊','侵略','撤退','条約','銃','大砲','塹壕','同盟','征服','戦士','戦'],
+    intro: { en: `The field was silent now, but the scars of the battle were everywhere.`, ja: `戦場は今や静かだったが、戦いの傷跡はいたるところに残っていた。` },
+    close: { en: `History would remember the victory; the soldiers only wanted to go home.`, ja: `歴史は勝利を記憶するだろう。だが兵士たちはただ家に帰りたかった。` },
+    carriers: [
+      { en: `The old general could not stop speaking of {w}`, ja: `年老いた将軍は、{w}（{m}）について語るのをやめられなかった` },
+      { en: `In the end, the whole campaign turned on {w}`, ja: `結局、戦い全体が{w}（{m}）を軸に動いた` },
+      { en: `For the men in the trenches, {w} was a daily reality`, ja: `塹壕の兵士たちにとって、{w}（{m}）は日常の現実だった` },
+    ] },
+  { id: 'art', label: '芸術・音楽',
+    en: ['music','melody','symphony','painting','canvas','sculpture','poet','poem','poetry','novel','theater','theatre','dance','rhythm','harmony','artist','gallery','opera','verse','brush','portrait','choir','composer','masterpiece'],
+    ja: ['音楽','旋律','交響','絵画','画布','彫刻','詩人','詩','小説','劇場','踊り','律動','調和','芸術','画廊','歌劇','韻','筆','肖像','聖歌','作曲','傑作'],
+    intro: { en: `In the dim gallery, every canvas seemed to hold its breath.`, ja: `薄暗い画廊で、どの絵も息をひそめているように見えた。` },
+    close: { en: `Art, she thought, was simply feeling given a shape you could share.`, ja: `芸術とは、分かち合える形を与えられた感情にすぎない——彼女はそう思った。` },
+    carriers: [
+      { en: `The young artist devoted herself entirely to {w}`, ja: `若い芸術家は、{w}（{m}）に全身全霊を捧げた` },
+      { en: `Critics argued for hours about the meaning of {w}`, ja: `批評家たちは{w}（{m}）の意味をめぐって何時間も論じ合った` },
+      { en: `There was, in that room, a quiet reverence for {w}`, ja: `その部屋には、{w}（{m}）への静かな畏敬があった` },
+    ] },
+  { id: 'business', label: '経済・ビジネス',
+    en: ['market','economy','economic','profit','invest','investment','trade','company','startup','capital','revenue','customer','brand','strategy','finance','financial','stock','entrepreneur','industry','negotiation','merger','budget','demand','supply','wage','consumer'],
+    ja: ['市場','経済','利益','投資','貿易','会社','起業','資本','収益','顧客','ブランド','戦略','金融','株','企業家','産業','交渉','合併','予算','需要','供給','賃金','消費'],
+    intro: { en: `The office glowed late into the night, screens full of restless numbers.`, ja: `オフィスは夜遅くまで明かりがともり、画面は落ち着かない数字で埋まっていた。` },
+    close: { en: `In business, she had learned, timing mattered as much as truth.`, ja: `ビジネスでは、真実と同じくらいタイミングが物を言う——彼女はそう学んでいた。` },
+    carriers: [
+      { en: `The entire strategy of the company depended on {w}`, ja: `会社の戦略すべてが{w}（{m}）にかかっていた` },
+      { en: `Every meeting eventually came back to {w}`, ja: `どの会議も、結局は{w}（{m}）へと戻っていった` },
+      { en: `The young founder talked about {w} as if it were destiny`, ja: `若い創業者は、{w}（{m}）をまるで運命のように語った` },
+    ] },
+  { id: 'emotion', label: '感情・人間',
+    en: ['love','grief','joy','fear','hope','loneliness','lonely','courage','anger','jealousy','longing','despair','gratitude','regret','comfort','sorrow','happiness','anxiety','tenderness','forgiveness','forgive','empathy','nostalgia'],
+    ja: ['愛','悲しみ','喜び','恐れ','希望','孤独','勇気','怒り','嫉妬','憧れ','絶望','感謝','後悔','慰め','哀し','幸福','不安','優し','許し','共感','郷愁'],
+    intro: { en: `Some feelings arrive quietly and never quite leave.`, ja: `静かにやってきて、決して立ち去らない感情がある。` },
+    close: { en: `Perhaps to be human is simply to carry all of this at once.`, ja: `人間であるとは、こうしたすべてを同時に抱えて生きることなのかもしれない。` },
+    carriers: [
+      { en: `For a long time, she could not find words for {w}`, ja: `長いあいだ、彼女は{w}（{m}）を言い表す言葉を見つけられなかった` },
+      { en: `Late at night, {w} would rise in him without warning`, ja: `夜更け、{w}（{m}）が何の前触れもなく彼の中にこみ上げた` },
+      { en: `The whole letter was, in truth, about {w}`, ja: `その手紙は、本当のところ{w}（{m}）についてのものだった` },
+    ] },
+];
+
+// 単語がどのトピックに属するか（英綴り・日本語意味の両方で判定）
+function topicOf(w) {
+  const toks = String(w.en || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  const ja = String(w.ja || '');
+  for (const t of TOPICS) {
+    const hitEn = t.en.some(k => toks.some(x => x === k || x === k + 's' || (k.length >= 4 && x.startsWith(k))));
+    const hitJa = t.ja.some(k => ja.includes(k));
+    if (hitEn || hitJa) return t.id;
+  }
+  return null;
+}
+
+// targets の中で最も多く一致したトピックを選ぶ
+function dominantTopic(targets) {
+  const tally = {};
+  targets.forEach(w => { const id = topicOf(w); if (id) tally[id] = (tally[id] || 0) + 1; });
+  let best = null, n = 0;
+  for (const id in tally) if (tally[id] > n) { n = tally[id]; best = id; }
+  return best ? TOPICS.find(t => t.id === best) : null;
+}
+
 function composeNatural(targets, seed) {
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const intro = INTROS[seed % INTROS.length];
-  const closing = CLOSINGS[seed % CLOSINGS.length];
+  const topic = dominantTopic(targets);
+  const intro = topic ? topic.intro : INTROS[seed % INTROS.length];
+  const closing = topic ? topic.close : CLOSINGS[seed % CLOSINGS.length];
   const enParts = [], jaParts = [];
   targets.forEach((w, i) => {
-    const bank = CARRIERS[guessPOS(w.en)] || CARRIERS.noun;
+    const pos = guessPOS(w.en);
+    // 名詞/形容詞/句/動名詞はトピック文に流し込む。動詞/副詞は破綻しやすいので汎用担い手にフォールバック
+    const useTopic = topic && (pos === 'noun' || pos === 'adj' || pos === 'phrase' || pos === 'ing');
+    const bank = useTopic ? topic.carriers : (CARRIERS[pos] || CARRIERS.noun);
     const c = bank[(seed + i) % bank.length];
     enParts.push(cap(c.en.replace('{w}', w.en)) + '.');
     jaParts.push(c.ja.replace('{w}', w.en).replace('{m}', w.ja) + '。');
@@ -413,6 +525,7 @@ function composeNatural(targets, seed) {
   return {
     en: [intro.en, ...enParts, closing.en].join(' '),
     ja: intro.ja + jaParts.join('') + closing.ja,
+    topic: topic ? topic.label : null,
   };
 }
 
@@ -921,18 +1034,18 @@ function generatePassage(shuffle) {
     .filter(x => x.hit === x.t.words.length)
     .sort((a,b) => b.hit - a.hit);
 
-  let en, ja, targets;
+  let en, ja, targets, topic = null;
   if (candidates.length) {
     const chosen = candidates[genSeed % candidates.length].t;
     en = chosen.en; ja = chosen.ja;
     targets = chosen.words.map(findWord).filter(Boolean);
   } else {
-    // 品詞を推定して各単語を文中に自然に織り込む（擬似AI生成）
+    // 単語の意味から分野を推定し、その文脈で英文を組み立てる（擬似AI生成）
     targets = pool.slice(0, Math.min(4, pool.length));
     const out = composeNatural(targets, genSeed);
-    en = out.en; ja = out.ja;
+    en = out.en; ja = out.ja; topic = out.topic;
   }
-  currentPassage = { en, ja, targets, graded: {}, showJa: false };
+  currentPassage = { en, ja, targets, graded: {}, showJa: false, topic };
   renderRead();
 }
 
@@ -959,6 +1072,7 @@ function renderRead() {
     <div class="bg-white rounded-4xl p-5 shadow-sm anim-fadeup">
       <div class="flex items-center gap-2 mb-3 flex-wrap">
         <span class="text-[10px] font-bold bg-coral/10 text-coralD rounded-full px-2.5 py-1">✨ AI生成（モック）</span>
+        ${p.topic ? `<span class="text-[10px] font-bold bg-lav/20 text-[#6b52a3] rounded-full px-2.5 py-1">🏷️ ${esc(p.topic)}</span>` : ''}
         <span class="text-[10px] text-ink/40">ターゲット ${p.targets.length} 語入り</span>
       </div>
       <p class="leading-8 text-[15px] font-num">${html}</p>
