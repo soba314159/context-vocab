@@ -424,15 +424,119 @@ const TOPICS = [
       { en: `The speeches of that era returned, again and again, to {w}`, ja: `その時代の演説は、幾度となく{w}（{m}）へと立ち返った` },
       { en: `To understand this country, one must first reckon with {w}`, ja: `この国を理解するには、まず{w}（{m}）と向き合わねばならない` },
     ] },
-  { id: 'science', label: '科学・宇宙',
-    en: ['atom','molecule','cell','gene','genetic','dna','gravity','energy','galaxy','universe','cosmos','planet','orbit','evolution','evolve','species','quantum','particle','neuron','brain','chemical','physics','biology','experiment','theory','radiation','electron','organism','hypothesis'],
-    ja: ['原子','分子','細胞','遺伝','重力','エネルギー','銀河','宇宙','惑星','軌道','進化','種','量子','粒子','神経','脳','化学','物理','生物','実験','理論','放射','電子','生命体','仮説'],
-    intro: { en: `Under the laboratory's pale light, the universe felt suddenly within reach.`, ja: `実験室の淡い光の下で、宇宙が急に手の届くもののように感じられた。` },
-    close: { en: `Each answer, as always in science, opened the door to a dozen new questions.`, ja: `科学ではいつものように、一つの答えは十の新たな問いへの扉を開いた。` },
+  { id: 'astronomy', label: '宇宙・天文',
+    en: ['galaxy','universe','cosmos','cosmic','planet','planetary','orbit','orbital','star','stellar','solar','lunar','telescope','observatory','nebula','comet','asteroid','meteor','meteorite','satellite','spacecraft','astronaut','constellation','supernova','eclipse','interstellar','exoplanet','astronomy','astronomer','lightyear','celestial','crater'],
+    ja: ['銀河','宇宙','惑星','軌道','恒星','星','太陽','月','望遠鏡','観測所','星雲','彗星','小惑星','隕石','衛星','宇宙船','宇宙飛行士','星座','超新星','日食','月食','恒星間','系外惑星','天文','光年','天体','クレーター'],
+    intros: [
+      { en: `The observatory dome cracked open, and the night sky poured in.`, ja: `観測所のドームが開き、夜空がなだれ込んできた。` },
+      { en: `Nine billion years of light arrived at the telescope that evening.`, ja: `九十億年ぶんの光が、その晩、望遠鏡に届いた。` },
+      { en: `From the dark hillside, the whole sky seemed to lean a little closer.`, ja: `暗い丘の上から見ると、空全体がこちらへ少し身を寄せているようだった。` },
+      { en: `In the silence of the control room, a faint signal returned from deep space.`, ja: `管制室の静寂の中、深宇宙からかすかな信号が返ってきた。` },
+    ],
+    closes: [
+      { en: `The universe, she realized, is mostly patience and distance.`, ja: `宇宙とはほとんど、忍耐と距離でできている——彼女はそう悟った。` },
+      { en: `Somewhere out there, the same light was still travelling.`, ja: `どこか遠くで、同じ光が今も旅を続けていた。` },
+      { en: `We are, after all, made from the dust of exploded stars.`, ja: `結局のところ私たちは、爆発した星の塵からできている。` },
+    ],
+    carriers: [
+      { en: `The astronomer had waited eleven years for a clear view of {w}`, ja: `その天文学者は、{w}（{m}）をはっきり捉えるために十一年待った` },
+      { en: `No instrument on Earth could yet measure {w} directly`, ja: `地上のどんな装置も、まだ{w}（{m}）を直接測ることはできなかった` },
+      { en: `Every model of the early cosmos had to account for {w}`, ja: `初期宇宙のどのモデルも、{w}（{m}）を説明せねばならなかった` },
+      { en: `Through the lens, {w} appeared smaller and far older than expected`, ja: `レンズの向こうで、{w}（{m}）は予想よりも小さく、はるかに古く見えた` },
+      { en: `The entire mission had been designed around one question: {w}`, ja: `その探査計画のすべてが、{w}（{m}）という一つの問いを軸に設計されていた` },
+      { en: `Radio telescopes across three continents turned toward {w}`, ja: `三大陸の電波望遠鏡が、いっせいに{w}（{m}）へ向けられた` },
+    ] },
+  { id: 'biology', label: '生命科学・医学',
+    en: ['cell','cellular','gene','genetic','genome','dna','rna','protein','enzyme','bacteria','bacterial','virus','viral','immune','immunity','vaccine','neuron','neural','brain','organism','tissue','blood','disease','infection','cancer','tumor','antibody','hormone','metabolism','mutation','mutate','chromosome','evolution','evolve','species','microbe','embryo','pathogen','symptom','diagnosis','therapy','surgery','patient','anatomy','physiology'],
+    ja: ['細胞','遺伝','ゲノム','タンパク質','酵素','細菌','ウイルス','免疫','ワクチン','神経','脳','生物','組織','血液','病気','感染','がん','腫瘍','抗体','ホルモン','代謝','突然変異','染色体','進化','種','微生物','幹細胞','胚','病原','症状','診断','治療','手術','患者','解剖','生理'],
+    intros: [
+      { en: `Under the microscope, a single drop of water turned out to be a crowded city.`, ja: `顕微鏡の下では、一滴の水が混み合った都市であることがわかった。` },
+      { en: `The lab kept its cultures at body temperature, day and night, for six months.`, ja: `研究室は培養を体温のまま、昼も夜も、六か月間保ち続けた。` },
+      { en: `Life, at its smallest scale, is astonishingly busy.`, ja: `生命は、その最小の尺度において、驚くほど忙しい。` },
+      { en: `The hospital corridor was quiet, but inside every patient a war was underway.`, ja: `病院の廊下は静かだったが、患者一人ひとりの内側では戦いが進行していた。` },
+    ],
+    closes: [
+      { en: `Nature, it turned out, had solved the problem long before we noticed it.`, ja: `私たちが気づくずっと前に、自然はすでにその問題を解いていた。` },
+      { en: `Every living thing is a question that has not finished answering itself.`, ja: `あらゆる生き物は、まだ自らに答え終えていない問いである。` },
+      { en: `Medicine advances slowly, and then all at once.`, ja: `医学はゆっくりと、そしてある時いっきに進む。` },
+    ],
+    carriers: [
+      { en: `The team finally isolated the mechanism behind {w}`, ja: `研究チームはついに、{w}（{m}）の背後にある仕組みを突き止めた` },
+      { en: `In every sample they examined, {w} appeared without exception`, ja: `調べたどの試料にも、例外なく{w}（{m}）が現れた` },
+      { en: `A single error in {w} could change the course of an entire life`, ja: `{w}（{m}）のたった一つの誤りが、一つの人生の行方を変えうる` },
+      { en: `Doctors had described {w} for centuries without truly understanding it`, ja: `医師たちは何世紀も{w}（{m}）を記述してきたが、本当に理解してはいなかった` },
+      { en: `The new treatment worked by targeting {w} directly`, ja: `その新しい治療は、{w}（{m}）を直接標的にすることで効いた` },
+      { en: `Under the electron microscope, {w} was finally visible`, ja: `電子顕微鏡の下で、{w}（{m}）はついに目に見えるものとなった` },
+    ] },
+  { id: 'technology', label: 'テクノロジー・AI',
+    en: ['algorithm','software','hardware','computer','computing','network','internet','digital','robot','robotics','artificial','intelligence','machine','code','coding','program','server','database','encryption','semiconductor','circuit','processor','automation','simulation','interface','cyber','bandwidth','silicon','dataset','engineer','engineering'],
+    ja: ['アルゴリズム','ソフトウェア','ハードウェア','計算機','コンピュータ','演算','通信網','ネットワーク','インターネット','デジタル','ロボット','人工知能','機械','コード','プログラム','サーバ','データベース','暗号','半導体','回路','自動化','シミュレーション','接続','帯域','技術者','工学'],
+    intros: [
+      { en: `The server room hummed at a constant, indifferent pitch.`, ja: `サーバ室は、一定の、無関心な音程でうなり続けていた。` },
+      { en: `By three in the morning the code finally compiled without a single error.`, ja: `午前三時、コードはついにエラー一つなく通った。` },
+      { en: `A machine had begun to notice patterns no human had ever labelled.`, ja: `機械は、人間が一度も名づけていないパターンに気づき始めていた。` },
+      { en: `The whole system ran on assumptions nobody had ever written down.`, ja: `そのシステム全体は、誰も書き留めたことのない前提の上で動いていた。` },
+    ],
+    closes: [
+      { en: `The hardest part was never the code; it was deciding what it should do.`, ja: `いちばん難しいのはコードではなく、それが何をすべきかを決めることだった。` },
+      { en: `Every technology arrives promising time, then quietly asks for attention instead.`, ja: `どんな技術も時間をくれると約束して現れ、代わりに静かに注意を奪っていく。` },
+      { en: `The machine was fast, tireless, and entirely without judgement.`, ja: `機械は速く、疲れを知らず、そしてまったく判断を持たなかった。` },
+    ],
+    carriers: [
+      { en: `The engineers rewrote the system three times before {w} behaved`, ja: `技術者たちは、{w}（{m}）がまともに動くまでシステムを三度書き直した` },
+      { en: `Modern life quietly depends on {w} in ways few people ever notice`, ja: `現代の生活は、ほとんど誰も気づかない形で{w}（{m}）に静かに依存している` },
+      { en: `The company's whole advantage came down to a single component: {w}`, ja: `その会社の優位は、{w}（{m}）というただ一つの要素に帰着した` },
+      { en: `Nobody could fully explain how {w} had arrived at its answer`, ja: `{w}（{m}）がどうやってその答えに至ったのか、誰も完全には説明できなかった` },
+      { en: `Once {w} was in place, everything else suddenly became possible`, ja: `{w}（{m}）が整うと、他のすべてが急に可能になった` },
+    ] },
+  { id: 'earth', label: '地球・環境',
+    en: ['climate','warming','carbon','emission','emissions','atmosphere','ozone','pollution','pollutant','sustainable','sustainability','fossil','earthquake','volcano','volcanic','tectonic','erosion','drought','flood','biodiversity','extinction','extinct','renewable','ecosystem','geology','mineral','sediment','deforestation','greenhouse'],
+    ja: ['気候','温暖化','炭素','排出','大気','オゾン','汚染','持続可能','化石','地震','火山','プレート','侵食','干ばつ','洪水','生物多様性','絶滅','再生可能','生態系','地質','鉱物','堆積','森林伐採','温室'],
+    intros: [
+      { en: `The ice core held eight hundred thousand years of weather, layer by layer.`, ja: `その氷床コアには、八十万年ぶんの天候が層をなして刻まれていた。` },
+      { en: `From orbit, the thin blue shell around the planet looks alarmingly fragile.`, ja: `軌道上から見ると、惑星を包む薄い青の殻は、驚くほど脆く見える。` },
+      { en: `The river had moved two kilometres west in a single century.`, ja: `その川は、たった一世紀で二キロ西へ移動していた。` },
+    ],
+    closes: [
+      { en: `The planet will be fine in the end. It is we who need a stable climate.`, ja: `結局のところ地球は大丈夫だ。安定した気候を必要としているのは私たちのほうだ。` },
+      { en: `Geology measures time in units that make human history look like an afternoon.`, ja: `地質学は、人類史が午後のひとときに見えるような単位で時間を測る。` },
+      { en: `Everything here is connected to everything else, whether we account for it or not.`, ja: `ここではすべてが他のすべてと繋がっている。私たちがそれを勘定に入れようといまいと。` },
+    ],
+    carriers: [
+      { en: `Satellite data from four decades made the trend in {w} impossible to deny`, ja: `四十年ぶんの衛星データは、{w}（{m}）の傾向を否定しようのないものにした` },
+      { en: `Communities downstream would feel the effects of {w} first`, ja: `下流の共同体が、{w}（{m}）の影響を最初に受けることになる` },
+      { en: `The report devoted eighty pages to {w} alone`, ja: `その報告書は、{w}（{m}）だけに八十ページを割いた` },
+      { en: `No policy could work without first addressing {w}`, ja: `{w}（{m}）にまず取り組まなければ、どんな政策も機能しなかった` },
+      { en: `The core samples recorded {w} more clearly than any written history`, ja: `その掘削試料は、どんな文字の歴史よりも明瞭に{w}（{m}）を記録していた` },
+    ] },
+  { id: 'science', label: '科学・研究',
+    en: ['atom','atomic','molecule','molecular','particle','quantum','physics','physical','chemistry','chemical','energy','gravity','force','mass','velocity','momentum','friction','thermodynamics','entropy','electron','proton','neutron','nucleus','isotope','reaction','catalyst','compound','element','laboratory','experiment','experimental','hypothesis','theory','theoretical','evidence','variable','research','researcher','scientist','scientific','discovery','radiation','magnetic','electric','frequency','laser','vacuum','equation','formula','measurement','precision','microscope','spectrum'],
+    ja: ['原子','分子','粒子','量子','物理','化学','エネルギー','重力','力','質量','速度','運動量','摩擦','熱力学','エントロピー','電子','陽子','中性子','原子核','同位体','反応','触媒','化合物','元素','実験室','実験','仮説','理論','証拠','変数','研究','科学者','発見','放射','磁気','電気','周波数','レーザー','真空','方程式','公式','測定','精度','顕微鏡','スペクトル'],
+    intros: [
+      { en: `Under the laboratory's pale light, the universe felt suddenly within reach.`, ja: `実験室の淡い光の下で、宇宙が急に手の届くもののように感じられた。` },
+      { en: `The experiment had failed forty-one times. The forty-second was different.`, ja: `その実験は四十一回失敗していた。四十二回目は違った。` },
+      { en: `Science begins with someone refusing to accept the obvious explanation.`, ja: `科学は、当たり前の説明を受け入れまいとする誰かから始まる。` },
+      { en: `The equation on the board was elegant, and almost certainly wrong.`, ja: `黒板の方程式は美しく、そしてほぼ確実に間違っていた。` },
+      { en: `For three months the instrument recorded nothing at all. Then it did.`, ja: `三か月のあいだ、その装置は何も記録しなかった。そしてある時、記録した。` },
+      { en: `Every measurement carries with it a small confession of uncertainty.`, ja: `あらゆる測定は、小さな不確かさの告白を伴っている。` },
+    ],
+    closes: [
+      { en: `Each answer, as always in science, opened the door to a dozen new questions.`, ja: `科学ではいつものように、一つの答えは十の新たな問いへの扉を開いた。` },
+      { en: `Being precisely wrong is more useful than being vaguely right.`, ja: `正確に間違っていることは、漠然と正しいことよりも役に立つ。` },
+      { en: `The result held. Three other laboratories confirmed it within the year.`, ja: `その結果は揺るがなかった。年内に他の三つの研究所が追試して確認した。` },
+      { en: `What could not be measured was not therefore unreal — only harder to reach.`, ja: `測れないものが実在しないわけではない。ただ手が届きにくいだけだ。` },
+    ],
     carriers: [
       { en: `The researchers spent years trying to explain {w}`, ja: `研究者たちは{w}（{m}）を説明しようと何年も費やした` },
       { en: `Nothing in the natural world quite made sense without {w}`, ja: `{w}（{m}）なしには、自然界の何ひとつ筋が通らなかった` },
       { en: `Her whole theory rested on a single idea: {w}`, ja: `彼女の理論すべては、{w}（{m}）という一つの考えに支えられていた` },
+      { en: `The data pointed, stubbornly and repeatedly, toward {w}`, ja: `データは頑固に、そして繰り返し、{w}（{m}）を指し示した` },
+      { en: `Two rival laboratories published contradictory results about {w}`, ja: `対立する二つの研究所が、{w}（{m}）について矛盾する結果を発表した` },
+      { en: `Before that winter, no one had thought to measure {w} at all`, ja: `その冬より前、{w}（{m}）を測ろうと考えた者は一人もいなかった` },
+      { en: `The professor drew {w} on the board and waited for the room to object`, ja: `教授は{w}（{m}）を黒板に書き、教室からの反論を待った` },
+      { en: `Reproducing the result required an exact understanding of {w}`, ja: `その結果を再現するには、{w}（{m}）の正確な理解が必要だった` },
+      { en: `In the end, the whole field reorganized itself around {w}`, ja: `結局、その分野全体が{w}（{m}）を中心に組み替えられた` },
+      { en: `A graduate student noticed {w} in data everyone else had discarded`, ja: `一人の大学院生が、他の誰もが捨てたデータの中に{w}（{m}）を見つけた` },
     ] },
   { id: 'nature', label: '自然・季節',
     en: ['forest','mountain','river','ocean','valley','desert','meadow','storm','snow','autumn','spring','harvest','wildlife','glacier','coast','jungle','dawn','dusk','horizon','wilderness','blossom','tide','wind','cliff','pasture'],
@@ -486,6 +590,9 @@ const TOPICS = [
     ] },
 ];
 
+// トピック辞書の中で実際に動詞として使われる語（これらだけ動詞扱いにする）
+const TOPIC_VERBS = new Set(['pray','worship','abolish','mutate','evolve','invade','conquer','forgive','protest','retreat']);
+
 // 単語がどのトピックに属するか（英綴り・日本語意味の両方で判定）
 function topicOf(w) {
   const toks = String(w.en || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
@@ -510,14 +617,23 @@ function dominantTopic(targets) {
 function composeNatural(targets, seed) {
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const topic = dominantTopic(targets);
-  const intro = topic ? topic.intro : INTROS[seed % INTROS.length];
-  const closing = topic ? topic.close : CLOSINGS[seed % CLOSINGS.length];
+  // トピックは intros/closes（複数）優先、無ければ intro/close（単数）
+  const pick = (arr, one, fallback) =>
+    (arr && arr.length) ? arr[seed % arr.length] : (one || fallback[seed % fallback.length]);
+  const intro = topic ? pick(topic.intros, topic.intro, INTROS) : INTROS[seed % INTROS.length];
+  const closing = topic ? pick(topic.closes, topic.close, CLOSINGS) : CLOSINGS[seed % CLOSINGS.length];
   const enParts = [], jaParts = [];
   targets.forEach((w, i) => {
     const pos = guessPOS(w.en);
-    // 名詞/形容詞/句/動名詞はトピック文に流し込む。動詞/副詞は破綻しやすいので汎用担い手にフォールバック
-    const useTopic = topic && (pos === 'noun' || pos === 'adj' || pos === 'phrase' || pos === 'ing');
-    const bank = useTopic ? topic.carriers : (CARRIERS[pos] || CARRIERS.noun);
+    // トピック辞書に載っている語は分野の名詞とみなす（climate/senate など -ate 名詞の誤判定対策）。
+    // 明らかな動詞・副詞だけ汎用担い手にフォールバックする。
+    const inTopic = !!topic && topicOf(w) === topic.id;
+    const verbish = TOPIC_VERBS.has(String(w.en || '').toLowerCase()) ||
+                    (!inTopic && (pos === 'verb' || pos === 'adv'));
+    const useTopic = !!topic && !verbish;
+    const bank = useTopic
+      ? topic.carriers
+      : (CARRIERS[verbish && pos !== 'adv' ? 'verb' : pos] || CARRIERS.noun);
     const c = bank[(seed + i) % bank.length];
     enParts.push(cap(c.en.replace('{w}', w.en)) + '.');
     jaParts.push(c.ja.replace('{w}', w.en).replace('{m}', w.ja) + '。');
